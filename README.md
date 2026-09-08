@@ -8,38 +8,23 @@ the **Neuron Path Planner** (`tools/neuron-path-planner.html`), a browser-based
 visual tool for drawing an autonomous path on the field and generating the Java
 to drive it.
 
-**New here? Open [`index.html`](index.html)** for the full get-started page (or
-just view it locally / via GitHub Pages, once enabled -- see below). The short
-version:
+**New here? Open [the quickstart page](https://brainstormz.us/neuron-pathing/index.html)**
+for the full get-started page. The short version:
 
 1. Clone this repo, open it in Android Studio, build once.
-2. Work through **[Installation](docs/installation.md)** then
-   **[Tuning](docs/tuning.md)** in order -- localizer sign conventions first,
+2. Work through **[Installation](https://brainstormz.us/neuron-pathing/docs/installation.html)** then
+   **[Tuning](https://brainstormz.us/neuron-pathing/docs/tuning.html)** in order -- localizer sign conventions first,
    PID gains second, spline follower last. Don't skip ahead.
-3. Open **[`tools/neuron-path-planner.html`](tools/neuron-path-planner.html)**
+3. Open **[the Neuron Path Planner](https://brainstormz.us/neuron-pathing/tools/neuron-path-planner.html)**
    in a browser, draw a path, and paste the generated code into an OpMode like
    `NeuronSplineAuto.java` under `TeamCode/.../opmodes/`.
 4. Adding your own mechanisms (intake, arm, shooter...)? See
-   **[Subsystems & Public Methods](docs/subsystems.md)** for how to write them and
+   **[Subsystems & Public Methods](https://brainstormz.us/neuron-pathing/docs/subsystems.html)** for how to write them and
    call them from both TeleOp and Autonomous alongside `NeuronDrive` --
    `TeamCode/.../subsystems/ExampleClaw.java` is a working example, already
    wired into `NeuronTeleOp.java` and `NeuronSplineAuto.java`.
 
-Stuck? See **[Troubleshooting](docs/troubleshooting.md)**.
-
-### Hosting this on GitHub Pages
-
-Once this repo is pushed to GitHub:
-
-1. Go to **Settings -> Pages**.
-2. Under **Source**, choose **GitHub Actions** (not "Deploy from a branch").
-3. Push to `main`/`master` (or run the workflow manually from the **Actions**
-   tab) -- `.github/workflows/pages.yml` builds and publishes just the static
-   site (`index.html`, `docs/`, `tools/`), not the Android project, to
-   `https://<your-org-or-user>.github.io/<repo-name>/`.
-
-No further setup needed -- the workflow triggers automatically on any push
-that touches `index.html`, `docs/`, or `tools/`.
+Stuck? See **[Troubleshooting](https://brainstormz.us/neuron-pathing/docs/troubleshooting.html)**.
 
 ---
 
