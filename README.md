@@ -1,3 +1,33 @@
+## Neuron Pathing Quickstart
+
+**Neuron Pathing** is a custom autonomous path-following library by *FIRST* Tech
+Challenge team 10298, Brain Stormz. This repo is a ready-to-clone quickstart:
+the stock FTC SDK (below) plus the Neuron Pathing library
+(`TeamCode/.../neuronpathing/`), a few example OpModes, and the flagship piece --
+the **Neuron Path Planner** (`tools/neuron-path-planner.html`), a browser-based
+visual tool for drawing an autonomous path on the field and generating the Java
+to drive it.
+
+**New here? Open [the quickstart page](https://brainstormz.us/neuron-pathing/index.html)**
+for the full get-started page. The short version:
+
+1. Clone this repo, open it in Android Studio, build once.
+2. Work through **[Installation](https://brainstormz.us/neuron-pathing/docs/installation.html)** then
+   **[Tuning](https://brainstormz.us/neuron-pathing/docs/tuning.html)** in order -- localizer sign conventions first,
+   PID gains second, spline follower last. Don't skip ahead.
+3. Open **[the Neuron Path Planner](https://brainstormz.us/neuron-pathing/tools/neuron-path-planner.html)**
+   in a browser, draw a path, and paste the generated code into an OpMode like
+   `NeuronSplineAuto.java` under `TeamCode/.../opmodes/`.
+4. Adding your own mechanisms (intake, arm, shooter...)? See
+   **[Subsystems & Public Methods](https://brainstormz.us/neuron-pathing/docs/subsystems.html)** for how to write them and
+   call them from both TeleOp and Autonomous alongside `NeuronDrive` --
+   `TeamCode/.../subsystems/ExampleClaw.java` is a working example, already
+   wired into `NeuronTeleOp.java` and `NeuronSplineAuto.java`.
+
+Stuck? See **[Troubleshooting](https://brainstormz.us/neuron-pathing/docs/troubleshooting.html)**.
+
+---
+
 ## NOTICE
 
 This repository contains the public FTC SDK for the BIOBUZZ (2026-2027) competition season.
