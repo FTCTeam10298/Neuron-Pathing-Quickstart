@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Installation — Neuron Pathing</title>
+<style>
+  @font-face { font-family:'Robotech GP';
+    src:url('https://brainstormz.us/assets/robotech_gp-webfont-D0hnl6R8.woff2') format('woff2'),
+        url('https://brainstormz.us/assets/robotech_gp-webfont-C3JwReAC.woff') format('woff');
+    font-weight:400; font-style:normal; font-display:swap; }
+  @font-face { font-family:'Montserrat';
+    src:url('https://brainstormz.us/assets/montserrat-regular-webfont-IHWKMDEO.woff') format('truetype');
+    font-display:swap; }
+  :root {
+    --bg:#eef3fb; --panel:#ffffff; --panel2:#eef4ff; --line:#dbe3ef;
+    --text:#172033; --muted:#637083; --accent:#1334f0; --accent2:#f2323f;
+    --ink:#11224c; --page-grad:linear-gradient(180deg,#fff,#f4f7fb 42%,#eef3fb);
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; background:var(--page-grad) var(--bg) fixed; color:var(--text);
+    font-family:'Montserrat',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  h1,h2,h3,h4 { font-family:'Robotech GP','Montserrat',sans-serif; letter-spacing:.4px; color:var(--ink);
+    text-transform:uppercase; font-weight:400; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .wrap { max-width:820px; margin:0 auto; padding:0 24px 80px; }
+  .topbar { display:flex; align-items:center; gap:14px; padding:26px 0 18px; border-bottom:1px solid var(--line);
+    margin-bottom:32px; }
+  .topbar .home { font-size:13px; font-weight:600; color:var(--muted); white-space:nowrap; }
+  .topbar .home:hover { color:var(--accent); }
+  .topbar h1 { font-size:20px; margin:0; }
+  .doc { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:36px 40px; }
+  .doc h1 { font-size:26px; margin-top:0; }
+  .doc h2 { font-size:17px; border-bottom:1px solid var(--line); padding-bottom:8px; margin:36px 0 16px; }
+  .doc h2:first-child { margin-top:0; }
+  .doc h3 { font-size:14px; letter-spacing:.3px; margin:24px 0 8px; }
+  .doc p, .doc li { font-size:14.5px; line-height:1.7; color:var(--text); }
+  .doc ul, .doc ol { padding-left:22px; }
+  .doc li { margin:6px 0; }
+  .doc li p { margin:4px 0; }
+  .doc code { font-family:'SFMono-Regular',Consolas,Menlo,monospace; background:var(--panel2);
+    border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-size:12.5px; color:var(--ink); }
+  .doc pre { background:var(--ink); color:#dce6ff; border-radius:10px; padding:16px 18px; overflow-x:auto;
+    font-size:13px; line-height:1.6; margin:14px 0; }
+  .doc pre code { background:none; border:none; padding:0; color:inherit; }
+  .doc table { border-collapse:collapse; width:100%; margin:16px 0; font-size:13.5px; }
+  .doc th, .doc td { border:1px solid var(--line); padding:8px 12px; text-align:left; vertical-align:top; }
+  .doc th { background:var(--panel2); color:var(--ink); font-family:'Montserrat',sans-serif; }
+  .doc strong { color:var(--ink); }
+  .nextprev { display:flex; justify-content:space-between; margin-top:28px; font-size:13.5px; }
+  footer { text-align:center; color:var(--muted); font-size:12.5px; margin-top:44px; }
+  @media (max-width: 640px) { .doc { padding:24px 22px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="home" href="../index.html">&larr; Neuron Pathing</a>
+    <h1>Installation</h1>
+  </div>
+  <div class="doc">
+<h2 id="requirements">Requirements</h2>
+<ul>
+<li>An omnidirectional drivetrain (mecanum or X-drive). NeuronDrive's mecanum math assumes
+  four independently-driven wheels named <code>frontLeft</code>, <code>frontRight</code>, <code>backLeft</code>, <code>backRight</code>
+  in your robot configuration (or pass your own names to the <code>NeuronDrive</code> constructor).</li>
+<li>A <a href="https://www.gobilda.com/pinpoint-odometry-computer/">goBILDA Pinpoint</a> odometry
+  computer, wired per goBILDA's instructions, named <code>pinpoint</code> in your robot configuration
+  (or pass your own device name to <code>NeuronLocalizer</code>).</li>
+<li>Android Studio (Ladybug 2024.2 or later) -- Neuron Pathing is a plain Java library, so it
+  does not work from Blocks or OnBot Java.</li>
+</ul>
+<p>The Pinpoint driver ships inside the stock FTC SDK itself, so this quickstart needs <strong>no
+extra Gradle dependencies</strong> beyond what <code>FtcRobotController</code> already provides.</p>
+<h2 id="get-the-code">Get the code</h2>
+<p>Clone this repo (or download it as a zip from GitHub) and open the folder in Android
+Studio as an existing project ("Open").</p>
+<pre><code>git clone &lt;this-repo-url&gt;
+</code></pre>
+<p>Build once (<code>Build &gt; Make Project</code>) before doing anything else, to confirm Android Studio,
+the SDK, and Gradle are all happy on a clean checkout.</p>
+<h2 id="where-everything-lives">Where everything lives</h2>
+<pre><code>TeamCode/.../neuronpathing/   the library: Pose2D, Spline, NeuronLocalizer, NeuronDrive, ...
+TeamCode/.../opmodes/         example OpModes built on the library
+tools/neuron-path-planner.html   the visual path planner (open it directly in a browser)
+docs/                         this documentation
+</code></pre>
+<h2 id="wire-up-your-robot">Wire up your robot</h2>
+<ol>
+<li>In the Driver Station / Driver Hub, create a robot configuration with:</li>
+<li>Four <code>DcMotorEx</code> entries named <code>frontLeft</code>, <code>frontRight</code>, <code>backLeft</code>, <code>backRight</code>
+     (or your own names -- see below).</li>
+<li>A goBILDA Pinpoint entry named <code>pinpoint</code> (I2C).</li>
+<li>Measure your Pinpoint's offset from the robot's center of rotation, in millimeters
+   (X = forward/back offset, Y = left/right offset -- see goBILDA's docs for sign
+   conventions). You'll need these numbers next.</li>
+<li>In your OpMode, construct the library:</li>
+</ol>
+<p><code>java
+   NeuronLocalizer localizer = new NeuronLocalizer(hardwareMap, telemetry,
+           /*xOffsetMm=*/ -78.74, /*yOffsetMm=*/ -184.15);
+   NeuronDrive drive = new NeuronDrive(hardwareMap, localizer, /*trackWidthIn=*/ 14);</code></p>
+<p><code>trackWidthIn</code> is the distance between your left and right wheel contact points, in
+   inches -- measure your actual robot, don't guess.</p>
+<p>If your hardware config uses different motor names than the default four, use the
+   longer constructor instead:</p>
+<p><code>java
+   NeuronDrive drive = new NeuronDrive(hardwareMap, localizer, trackWidthIn,
+           "myFrontLeft", "myFrontRight", "myBackLeft", "myBackRight");</code></p>
+<ol>
+<li>Before trusting any pose data, calibrate once (blocks briefly, ~1s):</li>
+</ol>
+<p><code>java
+   localizer.setPosition(new Pose2D(0, 0, 0)); // wherever your robot actually starts
+   localizer.calibrate(true);</code></p>
+<ol>
+<li>Call <code>drive.update()</code> every loop. That's it -- <code>drive.pose</code> now tracks the robot's
+   field position, and <code>drive.goToPoint()</code> / <code>drive.splineToPoint()</code> will drive there.</li>
+</ol>
+<p>None of this will behave correctly yet on a fresh robot -- the offsets, motor directions,
+and PID gains above are all starting points. Follow <strong><a href="tuning.md">Tuning</a></strong> next before
+trusting any of it in a match.</p>
+  </div>
+  <div class="nextprev">
+<span></span>
+<a href="tuning.html">Tuning &rarr;</a>
+  </div>
+  <footer>Neuron Pathing &amp; Neuron Path Planner &mdash; FTC Team 10298, Brain Stormz.</footer>
+</div>
+</body>
+</html>

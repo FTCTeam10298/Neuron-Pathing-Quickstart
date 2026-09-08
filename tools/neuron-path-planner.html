@@ -1,0 +1,2572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<title>Neuron Path Planner — Neuron Pathing by Brain Stormz 10298</title>
+<style>
+  /* Brand fonts pulled straight from the Brain Stormz team site (brainstormz.us) */
+  @font-face { font-family:'Robotech GP';
+    src:url('https://brainstormz.us/assets/robotech_gp-webfont-D0hnl6R8.woff2') format('woff2'),
+        url('https://brainstormz.us/assets/robotech_gp-webfont-C3JwReAC.woff') format('woff');
+    font-weight:400; font-style:normal; font-display:swap; }
+  @font-face { font-family:'Montserrat';
+    src:url('https://brainstormz.us/assets/montserrat-regular-webfont-IHWKMDEO.woff') format('truetype');
+    font-display:swap; }
+  :root {
+    /* Brain Stormz palette: white/soft-blue surfaces, navy ink, electric blue + red accents */
+    --bg:#eef3fb; --panel:#ffffff; --panel2:#eef4ff; --line:#dbe3ef;
+    --text:#172033; --muted:#637083; --accent:#1334f0; --accent2:#f2323f;
+    --green:#04aa6d; --red:#f2323f; --blue:#1334f0; --yellow:#d29922;
+    --brand-blue-dark:#1029bf; --ink:#11224c;
+    --page-grad:linear-gradient(180deg,#fff,#f4f7fb 42%,#eef3fb);
+    /* canvas/field colors, swapped in dark mode below */
+    --field:#f4f7fb; --grid-axis:#11224c; --grid-line:#dbe3ef;
+    --field-overlay:rgba(244,247,251,0.40); --robot-stroke:rgba(17,34,76,0.55);
+  }
+  body.dark {
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c2230; --line:#2a3242;
+    --text:#e6edf3; --muted:#8b949e; --accent:#58a6ff; --accent2:#f0883e;
+    --green:#3fb950; --red:#f85149; --blue:#58a6ff; --yellow:#d29922;
+    --brand-blue-dark:#1f6feb; --ink:#cdd9ff;
+    --page-grad:none;
+    --field:#0a0d12; --grid-axis:#3b475c; --grid-line:#1b2230;
+    --field-overlay:rgba(10,13,18,0.32); --robot-stroke:rgba(255,255,255,0.5);
+  }
+  body.dark input[type=text], body.dark input[type=number],
+  body.dark select, body.dark textarea { background:#0d1117; }
+  body.dark .step { background:#0f141c; }
+  body.dark .step.control { background:#15131c; }
+  body.dark .addbar .chip { background:#0f141c; }
+  body.dark .primary, body.dark .seg button.on { color:#04121f; }
+  body.dark h1 { color:var(--ink); }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%;
+    background:var(--page-grad) var(--bg) fixed; color:var(--text);
+    font-family:'Montserrat',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:13px; }
+  .app { display:flex; height:100vh; overflow:hidden; }
+  .left { flex:1; display:flex; flex-direction:column; min-width:0; padding:12px; gap:8px; }
+  .right { width:430px; min-width:430px; background:var(--panel); border-left:1px solid var(--line);
+    display:flex; flex-direction:column; overflow:hidden; }
+  h1 { font-size:16px; margin:0; font-weight:400; font-family:'Robotech GP','Montserrat',sans-serif;
+    letter-spacing:.5px; color:var(--ink); text-transform:uppercase; }
+  h1 small { color:var(--muted); font-weight:400; font-size:12px; }
+  .topbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .canvas-wrap { flex:1; display:flex; align-items:center; justify-content:center; min-height:0; position:relative; overflow:hidden; }
+  canvas { background:#f4f7fb; border:1px solid var(--line); border-radius:8px;
+    max-width:100%; max-height:100%; aspect-ratio:1/1; touch-action:none; cursor:crosshair; position:relative; z-index:1; }
+  .video-frame { position:absolute; border:1px solid var(--line); border-radius:8px; background:#000;
+    pointer-events:none; z-index:2; display:none; transform-origin:center center; }
+  .hint { color:var(--muted); font-size:11.5px; display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+  .hint b { color:var(--text); font-weight:600; }
+  .legend { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .legend span { display:inline-flex; align-items:center; gap:5px; }
+  .swatch { width:14px; height:3px; border-radius:2px; display:inline-block; }
+  .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .wide-range { min-width:120px; flex:1; }
+  .panel-scroll { overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:12px; }
+  .card { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:10px; }
+  .field-card { width:min(720px,100%); align-self:center; flex:0 0 auto; }
+  .card h2 { font-size:12px; margin:0 0 8px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .row + .row { margin-top:7px; }
+  label.fld { display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--muted); }
+  input[type=text], input[type=number], select, textarea {
+    background:#ffffff; color:var(--text); border:1px solid var(--line); border-radius:6px;
+    padding:5px 7px; font-size:12px; font-family:inherit; }
+  input[type=number] { width:64px; }
+  input:focus, select:focus, textarea:focus { outline:none; border-color:var(--accent); }
+  button { background:var(--panel2); color:var(--text); border:1px solid var(--line);
+    border-radius:6px; padding:6px 10px; cursor:pointer; font-size:12px; font-family:inherit; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
+  button.primary:hover { background:var(--brand-blue-dark); border-color:var(--brand-blue-dark); }
+  button.ghost { background:transparent; }
+  button.danger:hover { border-color:var(--red); color:var(--red); }
+  button.sm { padding:3px 7px; font-size:11px; }
+  button:disabled { opacity:.4; cursor:default; }
+  button:disabled:hover { border-color:var(--line); }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .seg button { border:none; border-radius:0; background:transparent; }
+  .seg button.on { background:var(--accent); color:#fff; font-weight:600; }
+  .seg.alt button.on { background:var(--accent2); color:#fff; }
+  .steps { display:flex; flex-direction:column; gap:7px; }
+  .step { border:1px solid var(--line); border-radius:7px; padding:8px; background:#ffffff; position:relative; }
+  .step.sel { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+  .step.move { border-left:3px solid var(--blue); }
+  .step.goto { border-left:3px solid var(--accent2); }
+  .step.action { border-left:3px solid var(--green); }
+  .step.control { border-left:3px solid var(--yellow); background:#fffdf3; padding:6px 8px; }
+  .step-head { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+  .step-num { font-weight:700; color:var(--muted); font-size:11px; min-width:30px; }
+  .step-title { font-weight:600; font-size:12px; flex:1; }
+  .icbtn { padding:2px 6px; font-size:12px; line-height:1; }
+  .mini { font-size:11px; color:var(--muted); }
+  textarea.code { width:100%; height:230px; resize:vertical; font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:11.5px; line-height:1.5; white-space:pre; overflow:auto; tab-size:4; }
+  .codebar { display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+  .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:var(--green);
+    color:#fff; padding:8px 16px; border-radius:8px; font-weight:600; opacity:0; transition:opacity .2s;
+    pointer-events:none; z-index:50; }
+  .toast.show { opacity:1; }
+  .chk { display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--text); cursor:pointer; }
+  .spacer { flex:1; }
+  details summary { cursor:pointer; color:var(--muted); font-size:11px; }
+  .addbar { display:flex; gap:6px; flex-wrap:wrap; position:sticky; bottom:0; z-index:3;
+    background:var(--panel2); border-top:1px solid var(--line); padding-top:8px; margin-top:9px; }
+  .addbar .chip { background:#dcf7ef; border-color:var(--green); color:#04aa6d; }
+  .quickbar { display:flex; gap:6px; flex-wrap:wrap; width:100%; }
+  a.filelbl { color:var(--accent); cursor:pointer; text-decoration:underline; font-size:11px; }
+  input[type=file] { display:none; }
+  .pill { font-size:10px; padding:1px 6px; border-radius:10px; background:var(--line); color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- LEFT: field + canvas -->
+  <div class="left">
+    <div class="topbar">
+      <a href="../index.html" class="mini" style="color:var(--muted); text-decoration:none; margin-right:2px" title="Back to Neuron Pathing home">&larr; Neuron Pathing</a>
+      <h1>Neuron Path Planner <small>· Neuron Pathing by FTC 10298 Brain Stormz · generates NeuronDrive-ready code</small></h1>
+      <div class="spacer"></div>
+      <button id="themeToggle" class="sm ghost" title="Toggle dark mode">🌙 Dark</button>
+      <span class="mini">Preview side:</span>
+      <div class="seg" id="allianceSeg">
+        <button data-a="BLUE" class="on">Blue</button>
+        <button data-a="RED">Red</button>
+      </div>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="field" width="720" height="720"></canvas>
+      <iframe id="youtubeFrame" class="video-frame" title="YouTube video overlay"
+        allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      <video id="localVideoFrame" class="video-frame" playsinline muted loop></video>
+    </div>
+
+    <div class="card field-card">
+      <h2>Simulator <span class="pill" id="simEta"></span></h2>
+      <div class="row">
+        <button class="primary sm" id="simPlay">▶ Play</button>
+        <button class="sm" id="simStep" title="Play the next feature, then pause">⏭ Step</button>
+        <button class="sm" id="simRestart" title="Back to start">⏮ Restart</button>
+        <span class="spacer"></span>
+        <label class="fld">Playback
+          <select id="simRate">
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+          </select>
+        </label>
+      </div>
+      <input type="range" id="simScrub" min="0" max="1000" value="0" style="width:100%; margin-top:9px">
+      <div class="row" style="margin-top:4px">
+        <span class="mini" id="simReadout">Press Play to simulate the active auto.</span>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <span class="mini">Rough estimate from a trapezoidal speed profile (top speed, accel, per-move power) plus settle/shoot dwell — set speeds in <b>Settings</b>.</span>
+      </div>
+    </div>
+
+    <div class="hint">
+      <span><b>Click</b> empty field = add waypoint</span>
+      <span><b>Drag</b> node = move · <b>arrow</b> = rotate · <b>◆</b> = spline factor</span>
+      <span><b>Scroll</b> = zoom · <b>drag empty</b> = pan</span>
+      <span><b>Del</b> = remove · <b>Arrows</b> = nudge</span>
+      <button class="sm" id="fitView" title="Reset zoom/pan (0)">⌖ fit</button>
+      <span class="spacer"></span>
+      <span id="mouseReadout" class="mini"></span>
+    </div>
+    <div class="legend mini">
+      <span><span class="dot" style="background:var(--green)"></span>Start</span>
+      <span><span class="swatch" style="background:var(--blue)"></span>Spline</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>GoTo</span>
+      <span><span class="dot" style="background:#fff"></span>Selected</span>
+      <span class="spacer"></span>
+      <label class="chk"><input type="checkbox" id="optBg" checked> Field</label>
+      <button class="sm" id="bgRotL" title="Rotate field image counter-clockwise">⟲</button>
+      <button class="sm" id="bgRotR" title="Rotate field image clockwise">⟳</button>
+      <button class="sm" id="bgFlipBtn" title="Flip field image">⇋</button>
+      <label class="chk"><input type="checkbox" id="optGrid" checked> Grid</label>
+      <label class="chk"><input type="checkbox" id="optZones" checked> Zones</label>
+      <label class="chk"><input type="checkbox" id="optSnap" checked> Snap ½&quot;</label>
+      <label class="chk" title="Tint each move by its assigned power (green=full → red=slow)"><input type="checkbox" id="optSpeed"> Speed</label>
+      <label class="chk" title="Overlay this many other autos' paths to compare (click one to switch to it)">Compare <input type="range" id="cmpSlider" min="0" max="0" value="0" style="width:72px; vertical-align:middle"> <span id="cmpVal" class="mini">0</span></label>
+      <span id="cmpLegend" class="mini" style="display:flex; gap:8px; flex-wrap:wrap"></span>
+      <label class="chk"><input type="checkbox" id="optRobot"> Robot box</label>
+      <input type="number" id="robotW" step="0.5" min="1" title="Robot width, inches (left-right)" style="width:46px">
+      <span class="mini">×</span>
+      <input type="number" id="robotL" step="0.5" min="1" title="Robot length, inches (forward)" style="width:46px">
+      <span class="mini">in</span>
+    </div>
+  </div>
+
+  <!-- RIGHT: controls -->
+  <div class="right">
+    <div class="panel-scroll">
+
+      <div class="card">
+        <h2>Output</h2>
+        <div class="row">
+          <label class="fld" style="flex:1">Auto name (method)
+            <input type="text" id="methodName" value="My_Auto">
+          </label>
+          <div class="seg" id="outputSeg" style="align-self:flex-end">
+            <button data-o="method" class="on">Method</button>
+            <button data-o="opmode">Full OpMode</button>
+          </div>
+        </div>
+        <div class="row" id="opModeNameRow" style="margin-top:8px">
+          <label class="fld" style="flex:1">OpMode class name (full-opmode file)
+            <input type="text" id="opModeName" value="auto">
+          </label>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="chk"><input type="checkbox" id="optSetPos" checked> include <code>setPosition()</code> (method mode)</label>
+          <span class="spacer"></span>
+          <button class="sm" id="loadExample">Load example</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Autos <span class="pill" id="autoCount"></span></h2>
+        <div class="row" id="autoTabs" style="gap:6px"></div>
+        <div class="row" style="margin-top:8px">
+          <button class="sm" id="addAuto">＋ Auto</button>
+          <button class="sm" id="dupAuto" title="Duplicate the active auto">⧉ Duplicate</button>
+          <button class="sm" id="moveAutoL" title="Move active auto earlier">◀</button>
+          <button class="sm" id="moveAutoR" title="Move active auto later">▶</button>
+          <button class="sm danger" id="delAuto" title="Delete the active auto">✕ Delete</button>
+          <span class="spacer"></span>
+          <a class="filelbl" id="importJava">import opmode (.java)</a>
+          <input type="file" id="importJavaFile" accept=".java,.txt">
+        </div>
+        <label class="fld" style="margin-top:8px">Driver-Station label (full opmode <code>autoNames[]</code>)
+          <input type="text" id="autoLabel">
+        </label>
+        <div class="mini" style="margin-top:6px">
+          <b>Full OpMode</b> mode emits every auto here into one selectable file
+          (DPAD up/down to choose, like <code>auto.java</code>). <b>Method</b> mode emits only the active auto.
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Start pose <span class="pill">setPosition</span></h2>
+        <div class="row">
+          <label class="fld">X <input type="number" step="0.5" id="startX"></label>
+          <label class="fld">Y <input type="number" step="0.5" id="startY"></label>
+          <label class="fld">Heading° <input type="number" step="1" id="startH"></label>
+          <span class="mini" style="flex:1">literal numbers used as<br><code>(X, Y*alliance, 180 - H*alliance)</code></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Path steps</h2>
+        <div class="row" style="margin-bottom:8px">
+          <span class="mini">Click adds:</span>
+          <div class="seg" id="clickAddsSeg">
+            <button data-k="spline" class="on">Spline</button>
+            <button data-k="goto">GoTo</button>
+          </div>
+          <span class="spacer"></span>
+          <button class="sm" id="undoBtn" title="Undo (Ctrl+Z)">↶ Undo</button>
+          <button class="sm" id="redoBtn" title="Redo (Ctrl+Y)">↷ Redo</button>
+          <span class="mini" id="stepCount" style="margin-left:8px"></span>
+        </div>
+        <div class="steps" id="stepsList"></div>
+        <div class="addbar">
+          <div class="quickbar">
+            <span class="mini" style="align-self:center">Quick add:</span>
+            <button class="sm chip" data-qa="shoot" title="Add shoot()">＋ shoot</button>
+            <button class="sm chip" data-qa="farShoot" title="Add farShoot()">＋ farShoot</button>
+            <button class="sm chip" data-qa="sleep" title="Add a wait (ms)">＋ wait</button>
+            <button class="sm chip" data-qa="intake" title="Add intake state">＋ intake</button>
+            <button class="sm chip" data-qa="gate" title="Add gate open/close">＋ gate</button>
+            <span class="mini" style="align-self:center; color:var(--muted)">(inserts after the selected step)</span>
+          </div>
+          <button class="sm" id="addSpline">＋ Spline</button>
+          <button class="sm" id="addGoto">＋ GoTo</button>
+          <select id="addActionType" class="sm" style="padding:4px 6px"></select>
+          <button class="sm" id="addAction">＋ Action</button>
+          <button class="sm" id="addRepeat" title="Wrap following steps in a for-loop">🔁 Repeat</button>
+          <button class="sm" id="addIfElse" title="Branch on the loop index (e.g. i % 2 == 0)">❓ If/Else</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Settings <span class="pill">inches</span></h2>
+        <div class="row">
+          <label class="fld">Robot top speed
+            <span class="row" style="gap:4px"><input type="number" id="simMaxV" step="1" min="1" style="width:56px"> <span class="mini">in/s</span></span>
+          </label>
+          <label class="fld">Max accel
+            <span class="row" style="gap:4px"><input type="number" id="simMaxA" step="5" min="0" style="width:56px"> <span class="mini">in/s²</span></span>
+          </label>
+          <span class="mini" style="flex:1; align-self:flex-end">drive limits used by the simulator (0 accel = constant speed)</span>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="fld">Default power
+            <input type="number" id="defMaxSpeed" step="0.05" min="0.05" max="1" style="width:60px">
+          </label>
+          <label class="fld">Default spline factor
+            <input type="number" id="defFactor" step="0.1" min="0.1" style="width:60px">
+          </label>
+          <label class="fld">Theme
+            <input type="color" id="accent" style="width:42px; height:28px; padding:1px">
+          </label>
+          <span class="mini" style="flex:1; align-self:flex-end">applied to new waypoints</span>
+        </div>
+        <div class="mini" style="margin-top:6px">All distances in inches, speeds in inches/sec. Field image: use <b>field image</b> / <b>reset field</b> below.</div>
+      </div>
+
+      <div class="card">
+        <h2>Video overlay <span class="pill" id="videoStatus">none</span></h2>
+        <div class="row">
+          <label class="fld" style="flex:1">YouTube link
+            <input type="text" id="youtubeUrl" placeholder="Paste a YouTube URL">
+          </label>
+          <button class="sm" id="youtubeLoad" style="align-self:flex-end">Load link</button>
+        </div>
+        <div class="mini" id="youtubeHint" style="display:none; margin-top:6px">
+          YouTube overlays need this planner opened from localhost, not directly as a file.
+        </div>
+        <div class="row">
+          <button class="sm" id="videoBtn">Load video</button>
+          <input type="file" id="videoFile" accept="video/*">
+          <button class="primary sm" id="videoPlay" disabled>Play</button>
+          <button class="sm danger" id="videoClear" disabled>Clear</button>
+          <span class="spacer"></span>
+          <label class="chk"><input type="checkbox" id="optVideo" checked> Show</label>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="fld" style="flex:1">Scrub
+            <input type="range" id="videoScrub" min="0" max="1000" value="0" disabled>
+          </label>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="fld" style="flex:1">Opacity
+            <input class="wide-range" type="range" id="videoOpacity" min="0" max="100" value="55">
+          </label>
+          <button class="sm" id="videoRotL" title="Rotate video counter-clockwise">⟲</button>
+          <button class="sm" id="videoRotR" title="Rotate video clockwise">⟳</button>
+          <button class="sm" id="videoResetTransform" title="Reset video size & alignment">Reset</button>
+          <span class="mini" id="videoTime">0:00 / 0:00</span>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="fld" style="flex:1">Scale
+            <input class="wide-range" type="range" id="videoScaleSlider" min="10" max="400" value="100">
+          </label>
+          <span class="mini" id="videoScaleVal" style="width:35px; text-align:right">100%</span>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="fld" style="flex:1">Offset X
+            <input class="wide-range" type="range" id="videoOffsetXSlider" min="-360" max="360" value="0">
+          </label>
+          <span class="mini" id="videoOffsetXVal" style="width:35px; text-align:right">0px</span>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="fld" style="flex:1">Offset Y
+            <input class="wide-range" type="range" id="videoOffsetYSlider" min="-360" max="360" value="0">
+          </label>
+          <span class="mini" id="videoOffsetYVal" style="width:35px; text-align:right">0px</span>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="fld" style="flex:1">Perspective Pitch (X)
+            <input class="wide-range" type="range" id="videoPerspXSlider" min="-60" max="60" value="0">
+          </label>
+          <span class="mini" id="videoPerspXVal" style="width:35px; text-align:right">0°</span>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="fld" style="flex:1">Perspective Yaw (Y)
+            <input class="wide-range" type="range" id="videoPerspYSlider" min="-60" max="60" value="0">
+          </label>
+          <span class="mini" id="videoPerspYVal" style="width:35px; text-align:right">0°</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Generated code</h2>
+        <div class="codebar">
+          <button class="primary" id="copyBtn">Copy</button>
+          <button id="downloadBtn">Download</button>
+          <span class="spacer"></span>
+          <a class="filelbl" id="exportBtn">export .json</a>
+          <a class="filelbl" id="importBtn">import .json</a>
+          <input type="file" id="importFile" accept=".json">
+          <input type="file" id="bgFile" accept="image/*">
+          <a class="filelbl" id="bgBtn">field image</a>
+          <a class="filelbl" id="bgResetBtn">reset field</a>
+        </div>
+        <textarea class="code" id="codeOut" readonly spellcheck="false"></textarea>
+        <details style="margin-top:8px">
+          <summary>How to use the output</summary>
+          <div class="mini" style="margin-top:6px; line-height:1.6">
+            Movement (<code>goToPoint</code>/<code>splineToPoint</code>) always targets the
+            Neuron Pathing library directly (<code>drive</code>/<code>localizer</code>). The
+            shoot/intake/gate/turret actions are this season's DECODE shooter pipeline and still
+            call into this year's <code>Robot</code> facade (<code>robot.gate</code>,
+            <code>robot.intake</code>, <code>Turret.TurretState</code>, ...) -- generate code
+            without them (or replace the action catalog, see the comment above
+            <code>const ACTIONS</code>) for a different game.<br>
+            <b>Method</b> mode: paste the method into an OpMode in your season repo that has
+            <code>drive</code>/<code>localizer</code> + <code>driveToTarget()</code>/<code>waitMs()</code>
+            (see <code>NeuronSplineAuto.java</code>) and, if you used any shooter actions,
+            <code>robot</code>/<code>alliance</code> + <code>shoot()</code>/<code>farShoot()</code>/
+            <code>pulseOuttake()</code> helpers too.<br>
+            <b>Full OpMode</b> mode: save as its own <code>.java</code> file — it bundles
+            <i>every</i> auto in the Autos card into one self-contained, selectable OpMode
+            (DPAD up/down to pick, X = Blue, B = Red) with all of the above scaffolding included,
+            ready to drop into your season's <code>TeamCode/.../opmodes/</code>.<br>
+            <b>Import opmode (.java)</b> (Autos card): load a previously generated OpMode back
+            into the planner — each <code>case → method()</code> becomes an editable auto, its
+            <code>setPosition</code> becomes the start pose, and <code>goToPoint</code>/
+            <code>splineToPoint</code> calls become steps. <code>for</code> loops become
+            <b>🔁 Repeat</b> blocks and <code>if/else</code> become <b>❓ If/Else</b> blocks; the
+            simulator actually loops and picks the branch each iteration (e.g. <code>i % 2 == 0</code>).
+            Spline <code>reversed</code> is preserved from the file (shown as <i>pinned</i>); clear the
+            pill to let it auto-derive. Anything unrecognized (including your own subsystem calls) is
+            kept verbatim as a <i>custom line</i>.
+          </div>
+        </details>
+      </div>
+
+      <button class="ghost danger sm" id="clearAll" style="align-self:flex-start">Clear everything</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+//==================================================================================
+// Neuron Path Planner — standalone tool for Neuron Pathing. Does not touch any
+// project source; paste the generated code into your own OpModes.
+// Field model: 144"x144", origin center, FTC-Dashboard orientation
+// (+X up, +Y left, heading 0 = +X, CCW positive).
+// Generated poses use the Neuron Pathing convention:
+//     new Pose2D(X, Y*alliance, Math.toRadians(180 - H*alliance))
+// where X,Y,H are the literal "base" numbers the user edits, and `alliance`
+// is -1 for Blue / +1 for Red (mirrors the path across the field's Y axis).
+//==================================================================================
+
+const FIELD = 144, HALF = 72, LOGICAL = 720, SCALE = LOGICAL / FIELD; // 5 px / inch
+const CX = LOGICAL / 2, CY = LOGICAL / 2;
+const HEAD_LEN = 11;            // heading-arrow length, inches
+const GOAL_X = -64.75, GOAL_Y_BLUE = -64.75, GOAL_Y_RED = 64.75;
+const ROBOT_IN = 22;            // robot footprint, inches
+
+// ---- action catalog: drives the dropdowns + code generation -------------------
+// `sleep` and `raw` are library-level (work against just NeuronDrive/NeuronLocalizer).
+// shoot/farShoot/pulseOuttake/intake/gate/shooter/turret are this season's DECODE
+// shooter-pipeline actions -- they emit the same robot.X / shoot() calls as the
+// team's real auto.java, since they're meant to be pasted into (or generated
+// alongside) that season repo, which already has Robot/Turret/Gate/Intake/Shooter.
+// Swap these out for your own game's subsystems by following the same shape.
+const ACTIONS = {
+  sleep:        { label:'wait (ms)',          field:'ms',  def:{ms:500},
+                  gen:a=>`waitMs(${Math.round(a.ms)});` },
+  shoot:        { label:'shoot()',            gen:()=>'shoot();' },
+  farShoot:     { label:'farShoot()',         gen:()=>'farShoot();' },
+  pulseOuttake: { label:'pulseOuttake(ms)',   field:'ms',  def:{ms:300},
+                  gen:a=>`pulseOuttake(${Math.round(a.ms)});` },
+  intake:       { label:'intake …',           field:'sel', opts:['in','off','out','shoot','farzoneshoot'], def:{mode:'in'},
+                  gen:a=>`robot.intake.${a.mode}();` },
+  gate:         { label:'gate …',             field:'sel', opts:['open','close'], def:{mode:'open'},
+                  gen:a=>`robot.gate.${a.mode}();` },
+  shooter:      { label:'shooter …',          field:'sel', opts:['shoot','off'], def:{mode:'shoot'},
+                  gen:a=>`robot.shooter.${a.mode}();` },
+  turret:       { label:'turret state …',     field:'sel', opts:['AUTO','ZERO','OFF'], def:{mode:'OFF'},
+                  gen:a=>`robot.turret.turretState = Turret.TurretState.${a.mode};` },
+  raw:          { label:'custom line …',       field:'txt', def:{text:'// custom'},
+                  gen:a=>a.text },
+};
+
+//---------------------------------- state -----------------------------------------
+// One tool now holds MANY autos (Close_Cycle, Far_Cycle, ...). Each auto has its
+// own name / Driver-Station label / start pose / steps. The active auto is the one
+// shown on the canvas and edited in the panel. For backward compatibility the rest
+// of the code still reads state.start / state.steps / state.methodName — those are
+// non-enumerable accessors (installed below) that proxy to the active auto.
+const LS_KEY = 'autoPathPlanner.v1';
+function defaultAuto(name, start) {
+  return { name: name || 'My_Auto', label: (name || 'My_Auto').replace(/_/g,' '),
+           start: start || { x:-7, y:14, h:90 }, steps: [] };
+}
+function defaultState() {
+  return {
+    previewAlliance:'BLUE', output:'method', opModeName:'auto',
+    includeSetPos:true, clickAdds:'spline',
+    showGrid:true, showZones:true, snap:true, showRobot:false, showSpeed:false, cmpCount:0,
+    videoShow:true, videoOpacity:0.55, videoRot:0, youtubeUrl:'',
+    videoScale:1, videoOffsetX:0, videoOffsetY:0,
+    videoPerspectiveX:0, videoPerspectiveY:0,
+    bgImage:null, bgRot:270, bgFlip:false, bgShow:true,
+    robotW:18, robotL:18, simMaxV:93.2, simMaxA:120, defFactor:1, defMaxSpeed:1, accent:'#58a6ff',
+    autos:[ defaultAuto('My_Auto') ],
+    activeAuto:0,
+    selected:null,   // {kind:'start'} | {kind:'step', i}
+  };
+}
+// Bring any loaded/imported blob up to the current schema (old single-auto saves,
+// missing field-image fields, out-of-range active index, etc.).
+function migrate(s) {
+  if (!s.autos) {                              // pre-multi-auto saves had start/steps/methodName at top level
+    s.autos = [ { name: s.methodName || 'My_Auto', label: (s.methodName||'My_Auto').replace(/_/g,' '),
+                  start: s.start || { x:-7, y:14, h:90 }, steps: s.steps || [] } ];
+  }
+  s.autos.forEach(a => { if (a.label === undefined) a.label = (a.name||'').replace(/_/g,' '); });
+  delete s.start; delete s.steps; delete s.methodName;
+  if (typeof s.activeAuto !== 'number' || s.activeAuto < 0 || s.activeAuto >= s.autos.length) s.activeAuto = 0;
+  if (!s.opModeName) s.opModeName = 'auto';
+  if (s.bgRot  === undefined) s.bgRot  = 270;   // DECODE image -> aligned to grid
+  if (s.bgFlip === undefined) s.bgFlip = false;
+  if (s.bgShow === undefined) s.bgShow = true;
+  if (s.robotW === undefined) s.robotW = 18;
+  if (s.robotL === undefined) s.robotL = 18;
+  if (s.simMaxV === undefined) s.simMaxV = 93.258267716535;
+  if (s.showSpeed === undefined) s.showSpeed = false;
+  if (typeof s.cmpCount !== 'number') s.cmpCount = 0;
+  delete s.showAll;
+  if (s.videoShow === undefined) s.videoShow = true;
+  if (s.videoOpacity === undefined) s.videoOpacity = 0.55;
+  if (s.videoRot === undefined) s.videoRot = 0;
+  if (s.videoScale === undefined) s.videoScale = 1;
+  if (s.videoOffsetX === undefined) s.videoOffsetX = 0;
+  if (s.videoOffsetY === undefined) s.videoOffsetY = 0;
+  if (s.videoPerspectiveX === undefined) s.videoPerspectiveX = 0;
+  if (s.videoPerspectiveY === undefined) s.videoPerspectiveY = 0;
+  if (s.youtubeUrl === undefined) s.youtubeUrl = '';
+  if (s.simMaxA === undefined) s.simMaxA = 80;
+  if (s.defFactor === undefined) s.defFactor = 1;
+  if (s.defMaxSpeed === undefined) s.defMaxSpeed = 1;
+  if (!s.accent) s.accent = '#58a6ff';
+  return s;
+}
+function installAccessors(o) {
+  const def = (k, get, set) => Object.defineProperty(o, k, { get, set, configurable:true, enumerable:false });
+  def('start',      ()=>state.autos[state.activeAuto].start,  v=>state.autos[state.activeAuto].start = v);
+  def('steps',      ()=>state.autos[state.activeAuto].steps,  v=>state.autos[state.activeAuto].steps = v);
+  def('methodName', ()=>state.autos[state.activeAuto].name,   v=>state.autos[state.activeAuto].name  = v);
+}
+const curAuto = () => state.autos[state.activeAuto];
+function adoptState(s) { state = migrate(s); installAccessors(state); }
+let state;
+adoptState(load() || defaultState());
+const DEFAULT_BG = 'decode.png';   // bundled DECODE field, sits next to this file
+let bgImg = null;
+function setBackground() {          // custom uploaded image if present, else the DECODE field
+  bgImg = new Image();
+  bgImg.onload = draw;
+  bgImg.onerror = () => { bgImg = null; draw(); };
+  bgImg.src = state.bgImage || DEFAULT_BG;
+}
+setBackground();
+
+const video = document.getElementById('localVideoFrame');
+let videoUrl = null;
+let videoLoop = null;
+const youtubeFrame = document.getElementById('youtubeFrame');
+let videoKind = '';
+let youtubePlaying = false;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (s && (Array.isArray(s.autos) || Array.isArray(s.steps))) return s;
+  } catch(e){}
+  return null;
+}
+function persist() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){} }
+
+// ---- undo / redo history. Tracks only path-meaningful fields (not view prefs,
+//      selection, or the background image), so Ctrl+Z reverts design changes. ----
+let undoStack = [], redoStack = [], lastKey = null;
+const HISTORY_LIMIT = 200;
+function historyKey() {
+  return JSON.stringify({
+    output: state.output, includeSetPos: state.includeSetPos, opModeName: state.opModeName,
+    activeAuto: state.activeAuto, autos: state.autos,
+  });
+}
+function save() {                 // commit boundary: snapshot if the path changed, then persist
+  const key = historyKey();
+  if (key !== lastKey) {
+    if (lastKey !== null) { undoStack.push(lastKey); if (undoStack.length > HISTORY_LIMIT) undoStack.shift(); }
+    redoStack = [];
+    lastKey = key;
+    updateUndoButtons();
+  }
+  persist();
+}
+function applyHistory(json) {
+  const h = JSON.parse(json);
+  state.output = h.output; state.includeSetPos = h.includeSetPos; state.opModeName = h.opModeName;
+  state.autos = h.autos; state.activeAuto = h.activeAuto;
+  if (state.selected && state.selected.kind === 'step' && !state.steps[state.selected.i]) state.selected = null;
+  renderAll(); persist();
+}
+function undo() {
+  if (!undoStack.length) return;
+  redoStack.push(lastKey); lastKey = undoStack.pop();
+  applyHistory(lastKey); updateUndoButtons(); toast('Undo');
+}
+function redo() {
+  if (!redoStack.length) return;
+  undoStack.push(lastKey); lastKey = redoStack.pop();
+  applyHistory(lastKey); updateUndoButtons(); toast('Redo');
+}
+function updateUndoButtons() {
+  const u = document.getElementById('undoBtn'), r = document.getElementById('redoBtn');
+  if (u) u.disabled = undoStack.length === 0;
+  if (r) r.disabled = redoStack.length === 0;
+}
+
+//------------------------------ coordinate math -----------------------------------
+const af = () => state.previewAlliance === 'BLUE' ? -1 : 1;
+const goalY = () => state.previewAlliance === 'BLUE' ? GOAL_Y_BLUE : GOAL_Y_RED;
+
+// base (code numbers) -> field (previewed real-world) coords
+function baseToField(p) {
+  return { x:p.x, y:p.y * af(), hdeg: 180 - p.h * af() };
+}
+// field -> base
+function fieldXYtoBase(fx, fy) { return { x:fx, y:fy * af() }; }     // af is ±1 so /af == *af
+function fieldHtoBase(fhdeg)   { return (180 - fhdeg) * af(); }
+
+// field inches -> screen (logical px)
+function f2s(fx, fy) { return { sx: CX - fy * SCALE, sy: CY - fx * SCALE }; }
+// screen -> field inches
+function s2f(sx, sy) { return { fx: (CY - sy) / SCALE, fy: (CX - sx) / SCALE }; }
+
+const snapXY = n => state.snap ? Math.round(n * 2) / 2 : Math.round(n * 100) / 100;
+const snapH  = n => Math.round(n);
+const fmt = n => { n = Math.round(Number(n) * 1000) / 1000; return Number.isFinite(n) ? String(n) : '0'; };
+
+//------------------------------ canvas drawing ------------------------------------
+const canvas = document.getElementById('field');
+const ctx = canvas.getContext('2d');
+let DPR = 1;
+// view = screen-space pan/zoom applied at the canvas level (runtime-only; not saved/undone).
+// f2s/s2f stay in base-logical coords; draw() bakes the view in via setTransform.
+let view = { scale:1, ox:0, oy:0 };
+(function hidpi(){
+  DPR = window.devicePixelRatio || 1;
+  canvas.width = LOGICAL * DPR; canvas.height = LOGICAL * DPR;
+  canvas.style.width = canvas.style.height = '';
+})();
+function applyView() { ctx.setTransform(DPR*view.scale, 0, 0, DPR*view.scale, DPR*view.ox, DPR*view.oy); }
+function resetView() { view = { scale:1, ox:0, oy:0 }; draw(); }
+function applyAccent() { document.documentElement.style.setProperty('--accent', state.accent || '#58a6ff'); }
+function zoomAt(px, py, factor) {
+  const ns = Math.max(0.5, Math.min(6, view.scale * factor)), k = ns / view.scale;
+  view.ox = px - (px - view.ox) * k; view.oy = py - (py - view.oy) * k; view.scale = ns; draw();
+}
+
+// read a CSS custom property so the canvas tracks the active (light/dark) theme
+function cssVar(name) { return getComputedStyle(document.body).getPropertyValue(name).trim(); }
+
+function draw() {
+  ctx.setTransform(1,0,0,1,0,0);                       // clear/fill the whole device canvas first
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = cssVar('--field'); ctx.fillRect(0,0,canvas.width,canvas.height);
+  applyView();                                         // then draw everything under the pan/zoom transform
+
+  // Field image rotated to ALIGN with the grid. The grid/path coordinate system
+  // never rotates; only the image is spun (and optionally flipped) to fit it.
+  if (state.bgShow && bgImg && bgImg.complete && bgImg.naturalWidth) {
+    ctx.save();
+    ctx.translate(CX, CY);
+    ctx.rotate((state.bgRot || 0) * Math.PI / 180);
+    if (state.bgFlip) ctx.scale(-1, 1);
+    ctx.drawImage(bgImg, -LOGICAL/2, -LOGICAL/2, LOGICAL, LOGICAL);
+    ctx.restore();
+    // gentle darken so grid lines and the path stay readable on top
+    ctx.fillStyle = cssVar('--field-overlay'); ctx.fillRect(0,0,LOGICAL,LOGICAL);
+  }
+
+  // grid (24" tiles)
+  if (state.showGrid) {
+    ctx.lineWidth = 1;
+    for (let i = -HALF; i <= HALF; i += 24) {
+      const a = f2s(i, HALF), b = f2s(i, -HALF);
+      ctx.strokeStyle = i === 0 ? cssVar('--grid-axis') : cssVar('--grid-line');
+      ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
+      const c = f2s(HALF, i), d = f2s(-HALF, i);
+      ctx.beginPath(); ctx.moveTo(c.sx, c.sy); ctx.lineTo(d.sx, d.sy); ctx.stroke();
+    }
+  }
+
+  // launch / park zones: pointInZone = (x<=0 && |y|<=-x) || (x>=48 && |y|<=x-48)
+  if (state.showZones) {
+    ctx.fillStyle = 'rgba(88,166,255,0.08)';
+    fillFieldPoly([[0,0],[-HALF,HALF],[-HALF,-HALF]]);          // x<=0 triangle
+    fillFieldPoly([[48,0],[HALF,HALF-48],[HALF,-(HALF-48)]]);   // x>=48 triangle
+  }
+
+  // goal marker (current preview side)
+  const g = f2s(GOAL_X, goalY());
+  ctx.fillStyle = '#f0c000';
+  ctx.beginPath(); ctx.arc(g.sx, g.sy, 6, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(240,192,0,0.5)';
+  ctx.beginPath(); ctx.arc(g.sx, g.sy, 11, 0, 7); ctx.stroke();
+  ctx.fillStyle = '#f0c000'; ctx.font = '11px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('GOAL', g.sx, g.sy - 16);
+
+  // ---- neighbouring autos faded underneath (Compare slider), each its own colour ----
+  shownNeighbors().forEach((ai, k) =>
+    drawPath(pathNodesOf(state.autos[ai].start, state.autos[ai].steps),
+             { faded:true, color: NEIGH_COLORS[k % NEIGH_COLORS.length] }));
+
+  // ---- active path: dashed line for goToPoint, real curved spline for splines.
+  //      with a waypoint selected, segments not touching it are dimmed (focus mode) ----
+  const activeNodes = pathNodes();
+  const focusIdx = selectedNodeIdx(activeNodes);   // selected node's index, or -1
+  const dimOthers = focusIdx >= 0;                 // a start/move node holds the selection
+  drawPath(activeNodes, { speed: state.showSpeed, focusIdx });
+
+  // ---- start pose (dimmed while another waypoint is selected) ----
+  drawNode(state.start, '#3fb950', 'S', isSel('start'), dimOthers && !isSel('start'));
+
+  // ---- move nodes ----
+  let n = 0;
+  state.steps.forEach((st, i) => {
+    if (st.kind !== 'move') return;
+    n++;
+    const col = st.move === 'goto' ? '#f0883e' : '#58a6ff';
+    drawNode(st, col, String(n), isSel('step', i), dimOthers && !isSel('step', i));
+  });
+
+  // spline factor handle (selected spline only): dashed lead + draggable diamond
+  if (state.selected && state.selected.kind === 'step') {
+    const st = state.steps[state.selected.i];
+    if (st && st.kind === 'move' && st.move === 'spline' && !st.locked) {
+      const nf = baseToField(st), nS = f2s(nf.x, nf.y), p = factorHandleField(st), s = f2s(p.x, p.y);
+      ctx.strokeStyle = 'rgba(210,153,34,0.9)'; ctx.lineWidth = 2; ctx.setLineDash([5,3]);
+      ctx.beginPath(); ctx.moveTo(nS.sx, nS.sy); ctx.lineTo(s.sx, s.sy); ctx.stroke(); ctx.setLineDash([]);
+      const R = 9;                                   // bigger, easier-to-grab diamond
+      ctx.fillStyle = '#d29922'; ctx.strokeStyle = '#1a0d02'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(s.sx, s.sy-R); ctx.lineTo(s.sx+R, s.sy); ctx.lineTo(s.sx, s.sy+R); ctx.lineTo(s.sx-R, s.sy); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#1a0d02'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('f', s.sx, s.sy); ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = '#d29922'; ctx.textAlign = 'left';
+      ctx.fillText((st.factor != null ? st.factor : 1).toString(), s.sx + R + 3, s.sy + 3);
+    }
+  }
+
+  // robot footprint (configurable in inches) at start + every move node
+  if (state.showRobot) {
+    drawRobotBox(state.start, dimOthers && !isSel('start'));
+    state.steps.forEach((st, i) => { if (st.kind === 'move') drawRobotBox(st, dimOthers && !isSel('step', i)); });
+  }
+
+  // simulated robot overlay (only while a simulation is engaged)
+  if (sim.active) drawSimRobot();
+
+  updateVideoFrames();
+}
+
+function fillFieldPoly(pts) {
+  ctx.beginPath();
+  pts.forEach((p, i) => { const s = f2s(p[0], p[1]); i ? ctx.lineTo(s.sx, s.sy) : ctx.moveTo(s.sx, s.sy); });
+  ctx.closePath(); ctx.fill();
+}
+
+function drawNode(base, color, label, selected, dimmed) {
+  ctx.save();
+  if (dimmed) ctx.globalAlpha = 0.3;
+  const f = baseToField(base);
+  const s = f2s(f.x, f.y);
+  const th = f.hdeg * Math.PI / 180;
+  // heading arrow (field dir -> screen: dx=-sin, dy=-cos)
+  const tip = f2s(f.x + HEAD_LEN * Math.cos(th), f.y + HEAD_LEN * Math.sin(th));
+  ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(s.sx, s.sy); ctx.lineTo(tip.sx, tip.sy); ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(tip.sx, tip.sy, 4, 0, 7); ctx.fill();      // arrow handle
+  // node
+  if (selected) { ctx.strokeStyle = cssVar('--grid-axis'); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(s.sx, s.sy, 10, 0, 7); ctx.stroke(); }
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(s.sx, s.sy, 7, 0, 7); ctx.fill();
+  ctx.fillStyle = '#04121f'; ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, s.sx, s.sy);
+  ctx.textBaseline = 'alphabetic';
+  if (base.locked) {                                  // locked: muted dashed ring + 🔒
+    ctx.strokeStyle = 'rgba(200,200,200,0.8)'; ctx.lineWidth = 1.5; ctx.setLineDash([3,2]);
+    ctx.beginPath(); ctx.arc(s.sx, s.sy, 11, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font = '9px sans-serif'; ctx.fillStyle = '#e6edf3'; ctx.fillText('🔒', s.sx + 12, s.sy - 10);
+  }
+  ctx.restore();
+}
+
+function drawRobotBox(base, dimmed) {
+  ctx.save();
+  if (dimmed) ctx.globalAlpha = 0.3;
+  const f = baseToField(base);
+  const th = f.hdeg * Math.PI / 180;
+  const halfL = (state.robotL || 18) / 2, halfW = (state.robotW || 18) / 2;
+  const corners = [[halfL,halfW],[halfL,-halfW],[-halfL,-halfW],[-halfL,halfW]].map(([fwd,left]) => {
+    const fx = f.x + fwd*Math.cos(th) - left*Math.sin(th);
+    const fy = f.y + fwd*Math.sin(th) + left*Math.cos(th);
+    return f2s(fx, fy);
+  });
+  ctx.strokeStyle = cssVar('--robot-stroke'); ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+  ctx.beginPath(); corners.forEach((c,i)=> i?ctx.lineTo(c.sx,c.sy):ctx.moveTo(c.sx,c.sy));
+  ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
+  ctx.restore();
+}
+
+// ordered list of nodes that have a position (start + move steps)
+function pathNodesOf(start, steps) {
+  const out = [{ ...fieldPose(start), move:'start', st:null, ref:{kind:'start'} }];
+  steps.forEach((st,i) => {
+    if (st.kind === 'move') out.push({ ...fieldPose(st), move:st.move, st, ref:{kind:'step',i} });
+  });
+  return out;
+}
+function pathNodes() { return pathNodesOf(state.start, state.steps); }
+// power -> colour for the velocity overlay (1=full=green, 0=slow=red)
+function speedColor(ms) {
+  const v = Math.max(0, Math.min(1, ms == null ? 1 : ms));
+  return `rgb(${Math.round(255*(1-v))},${Math.round(180*v+40)},60)`;
+}
+// neighbour-overlay palette + which autos to overlay (active + cmpCount following, wrapping)
+const NEIGH_COLORS = ['#f0883e','#d29922','#a371f7','#3fb950','#db61a2'];
+function shownNeighbors() {
+  const len = state.autos.length, n = Math.max(0, Math.min(len - 1, state.cmpCount || 0)), out = [];
+  for (let k = 1; k <= n; k++) out.push((state.activeAuto + k) % len);
+  return out;
+}
+function drawPath(nodes, opts) {
+  opts = opts || {};
+  ctx.save();
+  const baseAlpha = opts.faded ? 0.5 : 1;
+  const hasFocus = opts.focusIdx != null && opts.focusIdx >= 0;
+  ctx.lineWidth = opts.faded ? 2.5 : 3;
+  for (let i = 1; i < nodes.length; i++) {
+    const prev = nodes[i-1], cur = nodes[i], st = cur.st;
+    // focus mode: only the two segments touching the selected node stay bright
+    const dim = hasFocus && i !== opts.focusIdx && i !== opts.focusIdx + 1;
+    ctx.globalAlpha = baseAlpha * (dim ? 0.25 : 1);
+    ctx.strokeStyle = opts.faded ? (opts.color || '#8b949e')
+      : opts.speed   ? speedColor(st ? st.maxSpeed : 1)
+      : cur.move === 'goto' ? 'rgba(240,136,62,0.85)' : 'rgba(88,166,255,0.9)';
+    if (cur.move === 'goto') {
+      ctx.setLineDash(opts.faded ? [4,4] : [7,5]);
+      const A = f2s(prev.fx, prev.fy), B = f2s(cur.fx, cur.fy);
+      ctx.beginPath(); ctx.moveTo(A.sx, A.sy); ctx.lineTo(B.sx, B.sy); ctx.stroke(); ctx.setLineDash([]);
+    } else {
+      ctx.setLineDash([]);
+      const rev = st.reversed != null ? st.reversed : fieldReversed(prev, cur);
+      const samples = splineSamples(prev, cur, rev, st.factor);
+      ctx.beginPath();
+      samples.forEach((p, idx) => { const s = f2s(p.x, p.y); idx ? ctx.lineTo(s.sx, s.sy) : ctx.moveTo(s.sx, s.sy); });
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+// full field-space polyline of a path (goto = endpoints, spline = sampled curve) for hit-testing
+function sampledFieldPath(start, steps) {
+  const nodes = pathNodesOf(start, steps), pts = [];
+  for (let i = 0; i < nodes.length; i++) {
+    const cur = nodes[i];
+    if (i === 0) { pts.push({ x:cur.fx, y:cur.fy }); continue; }
+    const prev = nodes[i-1], st = cur.st;
+    if (cur.move === 'goto') pts.push({ x:cur.fx, y:cur.fy });
+    else {
+      const rev = st.reversed != null ? st.reversed : fieldReversed(prev, cur);
+      splineSamples(prev, cur, rev, st.factor).forEach(p => pts.push({ x:p.x, y:p.y }));
+    }
+  }
+  return pts;
+}
+// click on an overlaid neighbour path -> that auto's index (m is base-logical px), else -1
+function neighborPathHit(m) {
+  const tol = 8 / view.scale, tol2 = tol*tol;
+  for (const ai of shownNeighbors()) {
+    const pts = sampledFieldPath(state.autos[ai].start, state.autos[ai].steps).map(p => f2s(p.x, p.y));
+    for (let i = 1; i < pts.length; i++) if (distToSeg2(m, pts[i-1], pts[i]) <= tol2) return ai;
+  }
+  return -1;
+}
+function distToSeg2(p, a, b) {                    // squared distance from p to segment a-b (screen px)
+  const dx = b.sx-a.sx, dy = b.sy-a.sy, L2 = dx*dx + dy*dy;
+  let t = L2 ? ((p.sx-a.sx)*dx + (p.sy-a.sy)*dy) / L2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const cx = a.sx + t*dx, cy = a.sy + t*dy;
+  return (p.sx-cx)**2 + (p.sy-cy)**2;
+}
+function selectAutoAt(m) {
+  const ai = neighborPathHit(m);
+  if (ai < 0) return false;
+  switchAuto(ai); return true;
+}
+function fieldPose(base) { const f = baseToField(base); return { fx:f.x, fy:f.y, hdeg:f.hdeg }; }
+
+// Replicates Drivetrain/Spline.addPoint: a cubic Hermite curve from p1 -> p2 whose
+// endpoint tangents follow the (reversed-adjusted) headings, scaled by factor*distance.
+function splineSamples(p1, p2, reversed, factor) {
+  const h1 = p1.hdeg*Math.PI/180 + (reversed ? Math.PI : 0);
+  const h2 = p2.hdeg*Math.PI/180 + (reversed ? Math.PI : 0);
+  const x1=p1.fx, y1=p1.fy, x2=p2.fx, y2=p2.fy;
+  const v = (factor || 0) * Math.hypot(x2-x1, y2-y1);
+  const dx=x1, cx=v*Math.cos(h1), bx=3*x2 - v*Math.cos(h2) - 2*cx - 3*dx, ax=x2-bx-cx-dx;
+  const dy=y1, cy=v*Math.sin(h1), by=3*y2 - v*Math.sin(h2) - 2*cy - 3*dy, ay=y2-by-cy-dy;
+  const pts = [];
+  // tangent heading at each point (atan2 of the curve's derivative), matching what
+  // Spline.java stores per-point and what NeuronDrive actually steers toward -- not
+  // just a straight-line blend of the move's start/end heading.
+  for (let t=0; t<=1.0001; t+=0.02) {
+    const x = dx+cx*t+bx*t*t+ax*t*t*t, y = dy+cy*t+by*t*t+ay*t*t*t;
+    const dxdt = cx + 2*bx*t + 3*ax*t*t, dydt = cy + 2*by*t + 3*ay*t*t;
+    const h = (Math.atan2(dydt, dxdt) + (reversed ? Math.PI : 0)) * 180 / Math.PI;
+    pts.push({ x, y, h });
+  }
+  return pts;
+}
+// reversed is derived, not chosen: true when the target lies behind the robot's
+// heading (it must drive backwards). Computed in field space -> alliance-invariant.
+function fieldReversed(p1, p2) {
+  const h = p1.hdeg*Math.PI/180;
+  return ((p2.fx-p1.fx)*Math.cos(h) + (p2.fy-p1.fy)*Math.sin(h)) < 0;
+}
+
+//------------------------------ playback simulator --------------------------------
+// Plays the ACTIVE auto one feature at a time. Motion time is a rough estimate:
+//   travel time = path length / (top speed * power * shape factor),  plus a short
+// settle on precise (non-through) moves; wait actions become real dwells.
+// It is an estimate, not a physics sim — good enough to sanity-check timing.
+const sim = { active:false, playing:false, t:0, total:0, segs:null,
+              rate:1, lastTs:0, raf:null, stepTarget:null };
+const SIM_SETTLE = 0.35;      // s spent settling onto a precise (non-through) point
+
+function actionDuration(st) {
+  if (st.type === 'sleep' || st.type === 'pulseOuttake') return Math.max(0, +st.ms || 0) / 1000;
+  if (st.type === 'shoot')    return 0.6;     // matches shoot(): ~100+500ms of sleeps
+  if (st.type === 'farShoot') return 0.8;     // matches farShoot(): ~300+500ms
+  if (st.type === 'raw')      return 0;       // loops / braces / custom lines: structural, no time
+  return 0.15;                                // turret/intake/gate/shooter toggles: brief
+}
+// time to cover distance d at max speed v / max accel a (exact trapezoid; triangular if it never
+// reaches v). a<=0 -> constant-speed d/v. Pure simulator estimate, not the real motion profile.
+function travelTime(d, v, a) {
+  if (!a || a <= 0) return d / v;
+
+  // real robots rarely achieve theoretical max
+  v *= 0.88;
+
+  // acceleration ramp (motor spin-up, traction, battery sag)
+  a *= 0.75;
+
+  const accelDist = v * v / a;
+
+  let t;
+  if (d >= accelDist) {
+    t = d / v + v / a;
+  } else {
+    t = 2 * Math.sqrt(d / a);
+  }
+
+  // add drivetrain latency
+  return t + 0.08;
+}
+function angDiff(b, a) { let d = (b - a) % 360; if (d > 180) d -= 360; if (d < -180) d += 360; return d; }
+function polyMeta(poly) {
+  const cum = [0]; let len = 0;
+  for (let k = 1; k < poly.length; k++) { len += Math.hypot(poly[k].x-poly[k-1].x, poly[k].y-poly[k-1].y); cum.push(len); }
+  return { cum, len };
+}
+function posAlong(seg, frac) {
+  const { poly, cum, len } = seg;
+  if (!poly.length) return { x:0, y:0, h:null };
+  if (len < 1e-6 || poly.length < 2) return { x:poly[0].x, y:poly[0].y, h:poly[0].h };
+  const d = Math.max(0, Math.min(len, frac * len));
+  let k = 1; while (k < cum.length - 1 && cum[k] < d) k++;
+  const segLen = (cum[k] - cum[k-1]) || 1, u = (d - cum[k-1]) / segLen;
+  const h = (poly[k-1].h != null && poly[k].h != null)
+    ? poly[k-1].h + angDiff(poly[k].h, poly[k-1].h) * u
+    : null;
+  return { x:poly[k-1].x + (poly[k].x-poly[k-1].x)*u, y:poly[k-1].y + (poly[k].y-poly[k-1].y)*u, h };
+}
+// Build a tree of blocks from the flat marker list: repeat{body}, if{then,else}, leaf.
+function parseBlocks(steps) {
+  const root = [];
+  const stack = [{ target: root, node: null }];
+  const top = () => stack[stack.length - 1];
+  steps.forEach((st, idx) => {
+    if (st.kind === 'repeat') {
+      const node = { type:'repeat', count: st.count, var: st.var || 'i', body: [] };
+      top().target.push(node); stack.push({ target: node.body, node });
+    } else if (st.kind === 'if') {
+      const node = { type:'if', cond: st.cond || 'true', thenBody: [], elseBody: null };
+      top().target.push(node); stack.push({ target: node.thenBody, node });
+    } else if (st.kind === 'else') {
+      const f = top();
+      if (f.node && f.node.type === 'if') { f.node.elseBody = []; f.target = f.node.elseBody; }
+    } else if (st.kind === 'end') {
+      if (stack.length > 1) stack.pop();
+    } else {
+      top().target.push({ type:'leaf', step: st, idx });
+    }
+  });
+  return root;
+}
+// Evaluate an if-condition with the active loop variables (and `alliance`) in scope.
+function evalCond(cond, scope) {
+  try {
+    const names = scope.map(s => s.name), vals = scope.map(s => s.value);
+    names.push('alliance'); vals.push(af());
+    return !!(Function(...names, 'return (' + cond + ');')(...vals));
+  } catch (e) { return true; }   // unknown/invalid condition -> take the then-branch
+}
+// Interpret the tree into the real ordered sequence of executed leaves (moves/actions),
+// looping repeats and choosing if/else branches per iteration.
+function execNodes(nodes, scope, out, guard) {
+  for (const node of nodes) {
+    if (guard.n > 50000) return;                       // runaway guard
+    if (node.type === 'leaf') { out.push({ step: node.step, idx: node.idx, scope: scope.slice() }); guard.n++; }
+    else if (node.type === 'repeat') {
+      const cnt = Math.max(0, Math.min(1000, Math.round(node.count) || 0));
+      for (let v = 0; v < cnt; v++) execNodes(node.body, scope.concat([{ name: node.var, value: v }]), out, guard);
+    } else if (node.type === 'if') {
+      const branch = evalCond(node.cond, scope) ? node.thenBody : node.elseBody;
+      if (branch) execNodes(branch, scope, out, guard);
+    }
+  }
+}
+function expandSteps(steps) {
+  const out = []; execNodes(parseBlocks(steps), [], out, { n: 0 }); return out;
+}
+function scopeLabel(scope) { return scope.map(s => `${s.name}=${s.value}`).join(', '); }
+
+function buildTimeline() {
+  const exec = expandSteps(state.steps), segs = [];
+const maxV = Math.max(1, +state.simMaxV || 93.2);
+  let cur = fieldPose(state.start);
+  exec.forEach(item => {
+    const st = item.step, loop = scopeLabel(item.scope);
+    if (st.kind === 'move') {
+      const tgt = fieldPose(st);
+      const reversed = st.reversed != null ? st.reversed : fieldReversed(cur, tgt);
+      const poly = st.move === 'goto'
+        ? [{ x:cur.fx, y:cur.fy }, { x:tgt.fx, y:tgt.fy }]
+        : splineSamples(cur, tgt, reversed, st.factor);
+      const { cum, len } = polyMeta(poly);
+      const shape = st.move === 'goto' ? 1 : 0.85;     // spline runs ~0.7..1.0 of full -> avg ~0.85
+      const v = Math.max(1, maxV * shape * Math.max(0.05, +st.maxSpeed || 1));
+      const moveDur = travelTime(len, v, +state.simMaxA || 0);
+      segs.push({ i: item.idx, loop, kind:'move', poly, cum, len, fromH:cur.hdeg, toH:tgt.hdeg,
+                  moveDur, dur: moveDur + (st.through ? 0 : SIM_SETTLE),
+                  label: st.move === 'goto' ? 'GoTo' : 'Spline' });
+      cur = tgt;
+    } else {
+      segs.push({ i: item.idx, loop, kind:'action', moveDur:0, dur: actionDuration(st), pose:{ ...cur },
+                  label: (ACTIONS[st.type] && ACTIONS[st.type].gen(st)) || st.type });
+    }
+  });
+  sim.segs = segs;
+  sim.total = segs.reduce((a, s) => a + s.dur, 0);
+  return segs;
+}
+function getSegs() { if (!sim.segs) buildTimeline(); return sim.segs; }
+function poseAt(t) {
+  const segs = getSegs();
+  if (!segs.length) { const f = fieldPose(state.start); return { fx:f.fx, fy:f.fy, hdeg:f.hdeg, seg:-1 }; }
+  let acc = 0;
+  for (let s = 0; s < segs.length; s++) {
+    const seg = segs[s];
+    if (t <= acc + seg.dur || s === segs.length - 1) {
+      const local = Math.max(0, t - acc);
+      if (seg.kind === 'action') return { fx:seg.pose.fx, fy:seg.pose.fy, hdeg:seg.pose.hdeg, seg:s };
+      const frac = seg.moveDur > 0 ? Math.min(1, local / seg.moveDur) : 1;
+      const p = posAlong(seg, frac);
+      const hdeg = p.h != null ? p.h : seg.fromH + angDiff(seg.toH, seg.fromH) * frac;
+      return { fx:p.x, fy:p.y, hdeg, seg:s };
+    }
+    acc += seg.dur;
+  }
+}
+function drawFieldRobot(fx, fy, hdeg, color) {
+  const th = hdeg * Math.PI / 180;
+  const halfL = (state.robotL || 18) / 2, halfW = (state.robotW || 18) / 2;
+  const corners = [[halfL,halfW],[halfL,-halfW],[-halfL,-halfW],[-halfL,halfW]].map(([fwd,left]) => {
+    const x = fx + fwd*Math.cos(th) - left*Math.sin(th);
+    const y = fy + fwd*Math.sin(th) + left*Math.cos(th);
+    return f2s(x, y);
+  });
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(63,185,80,0.18)'; ctx.strokeStyle = color; ctx.lineWidth = 2;
+  ctx.beginPath(); corners.forEach((c,i)=> i?ctx.lineTo(c.sx,c.sy):ctx.moveTo(c.sx,c.sy));
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  const c0 = f2s(fx, fy), tip = f2s(fx + HEAD_LEN*Math.cos(th), fy + HEAD_LEN*Math.sin(th));
+  ctx.beginPath(); ctx.moveTo(c0.sx, c0.sy); ctx.lineTo(tip.sx, tip.sy); ctx.stroke();
+  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(c0.sx, c0.sy, 4, 0, 7); ctx.fill();
+}
+function drawSimRobot() {
+  const segs = getSegs(); if (!segs.length) return;
+  // traveled trail up to current time
+  ctx.strokeStyle = 'rgba(63,185,80,0.95)'; ctx.lineWidth = 3; ctx.setLineDash([]);
+  ctx.beginPath(); let started = false, acc = 0;
+  for (let s = 0; s < segs.length && sim.t > acc; s++) {
+    const seg = segs[s];
+    if (seg.kind === 'move' && seg.poly.length) {
+      const frac = sim.t >= acc + seg.dur ? 1 : (seg.moveDur > 0 ? Math.min(1, (sim.t - acc) / seg.moveDur) : 1);
+      const d = frac * seg.len;
+      for (let k = 0; k < seg.poly.length && seg.cum[k] <= d; k++) {
+        const pt = f2s(seg.poly[k].x, seg.poly[k].y);
+        started ? ctx.lineTo(pt.sx, pt.sy) : (ctx.moveTo(pt.sx, pt.sy), started = true);
+      }
+      const ep = posAlong(seg, frac), eps = f2s(ep.x, ep.y);
+      started ? ctx.lineTo(eps.sx, eps.sy) : (ctx.moveTo(eps.sx, eps.sy), started = true);
+    }
+    acc += seg.dur;
+  }
+  ctx.stroke();
+  // robot at current pose
+  const ps = poseAt(sim.t);
+  drawFieldRobot(ps.fx, ps.fy, ps.hdeg, '#3fb950');
+  // banner for a dwell action (sleep / shoot / ...)
+  const seg = segs[Math.max(0, ps.seg)];
+  if (seg && seg.kind === 'action' && seg.dur > 0.001) {
+    const s = f2s(ps.fx, ps.fy);
+    ctx.font = 'bold 12px ui-monospace,Consolas,monospace'; ctx.textAlign = 'center';
+    const txt = seg.label, w = ctx.measureText(txt).width + 12;
+    ctx.fillStyle = 'rgba(14,17,22,0.85)';
+    ctx.fillRect(s.sx - w/2, s.sy - 34, w, 18);
+    ctx.fillStyle = '#3fb950'; ctx.fillText(txt, s.sx, s.sy - 21);
+  }
+}
+function updateSimButtons() {
+  const b = document.getElementById('simPlay');
+  if (b) b.textContent = sim.playing ? '⏸ Pause' : '▶ Play';
+}
+function updateSimReadout() {
+  const segs = getSegs();
+  const el = document.getElementById('simReadout'), eta = document.getElementById('simEta'),
+        scr = document.getElementById('simScrub');
+  if (eta) eta.textContent = segs.length ? `~${sim.total.toFixed(1)}s total` : '';
+  if (sim.t > sim.total) sim.t = sim.total;
+  if (!segs.length) { if (el) el.textContent = 'No steps to simulate.'; if (scr) scr.value = 0; return; }
+  const idx = Math.max(0, poseAt(sim.t).seg), seg = segs[idx];
+  const loopTxt = seg.loop ? `  ·  [${seg.loop}]` : '';
+  if (el) el.textContent = `t ${sim.t.toFixed(1)}s / ${sim.total.toFixed(1)}s  ·  feature ${idx+1}/${segs.length}  ·  ${seg.label}${loopTxt}`;
+  if (scr) scr.value = sim.total ? Math.round(sim.t / sim.total * 1000) : 0;
+}
+function simFrame(ts) {
+  if (!sim.playing) { sim.raf = null; return; }
+  if (!sim.lastTs) sim.lastTs = ts;
+  sim.t += (ts - sim.lastTs) / 1000 * sim.rate; sim.lastTs = ts;
+  let stop = false;
+  if (sim.stepTarget != null && sim.t >= sim.stepTarget) { sim.t = sim.stepTarget; sim.stepTarget = null; stop = true; }
+  if (sim.t >= sim.total) { sim.t = sim.total; stop = true; }
+  draw(); updateSimReadout();
+  if (stop) { sim.playing = false; sim.lastTs = 0; updateSimButtons(); return; }
+  sim.raf = requestAnimationFrame(simFrame);
+}
+function simPlay() {
+  if (!getSegs().length) return;
+  if (sim.t >= sim.total) sim.t = 0;
+  sim.active = true; sim.playing = true; sim.lastTs = 0;
+  updateSimButtons(); sim.raf = requestAnimationFrame(simFrame);
+}
+function simPause() {
+  sim.playing = false; sim.lastTs = 0;
+  if (sim.raf) cancelAnimationFrame(sim.raf); sim.raf = null;
+  updateSimButtons();
+}
+function simTogglePlay() { sim.playing ? simPause() : (sim.stepTarget = null, simPlay()); }
+function simRestart() { sim.active = true; sim.segs = null; sim.t = 0; sim.stepTarget = null; simPause(); draw(); updateSimReadout(); }
+function simStepFeature() {
+  sim.active = true; const segs = getSegs(); if (!segs.length) return;
+  if (sim.t >= sim.total) sim.t = 0;
+  let acc = 0, target = sim.total;
+  for (const seg of segs) { acc += seg.dur; if (acc > sim.t + 1e-4) { target = acc; break; } }
+  sim.stepTarget = target;
+  if (!sim.playing) simPlay();
+}
+function simScrubTo(frac) {
+  sim.active = true; simPause();
+  sim.t = Math.max(0, Math.min(1, frac)) * (sim.total || 0);
+  draw(); updateSimReadout();
+}
+
+//------------------------------ selection helpers ---------------------------------
+function isSel(kind, i) {
+  const s = state.selected; if (!s) return false;
+  return kind === 'start' ? s.kind === 'start' : (s.kind === 'step' && s.i === i);
+}
+function selectedNode() {
+  const s = state.selected; if (!s) return null;
+  if (s.kind === 'start') return state.start;
+  const st = state.steps[s.i]; return (st && st.kind === 'move') ? st : null;
+}
+// the current selection IF it maps to a node on the field (start or a move step), else null.
+// drives "focus mode": dim + lock every other waypoint until one is picked from the steps list.
+function selNodeRef() {
+  const s = state.selected; if (!s) return null;
+  if (s.kind === 'start') return s;
+  if (s.kind === 'step') { const st = state.steps[s.i]; if (st && st.kind === 'move') return s; }
+  return null;
+}
+// index of the selected node within a pathNodesOf() list (start/move step), or -1
+function selectedNodeIdx(nodes) {
+  const s = selNodeRef(); if (!s) return -1;
+  return nodes.findIndex(nd => nd.ref.kind === s.kind && (s.kind === 'start' || nd.ref.i === s.i));
+}
+
+//------------------------------ hit testing / drag --------------------------------
+function handles() {
+  const list = [];
+  // focus mode: once a waypoint is selected, only it is grabbable on the field — every
+  // other node is locked out until re-selected from the Path steps list.
+  const lockSel = selNodeRef();
+  const grabbable = ref => !lockSel || (ref.kind === lockSel.kind && (lockSel.kind === 'start' || ref.i === lockSel.i));
+  const push = (base, ref) => {
+    const f = baseToField(base), s = f2s(f.x, f.y);
+    const th = f.hdeg * Math.PI/180;
+    const tip = f2s(f.x + HEAD_LEN*Math.cos(th), f.y + HEAD_LEN*Math.sin(th));
+    list.push({ ref, kind:'pos',  sx:s.sx,   sy:s.sy });
+    list.push({ ref, kind:'head', sx:tip.sx, sy:tip.sy });
+  };
+  if (!state.start.locked && grabbable({ kind:'start' })) push(state.start, { kind:'start' });
+  state.steps.forEach((st,i)=> {
+    if (st.kind!=='move' || st.locked || !grabbable({ kind:'step', i })) return;
+    push(st, { kind:'step', i });
+    if (st.move==='spline' && isSel('step', i)) {        // draggable factor diamond on the selected spline
+      const p = factorHandleField(st), s = f2s(p.x, p.y);
+      list.push({ ref:{kind:'step', i}, kind:'factor', sx:s.sx, sy:s.sy });
+    }
+  });
+  return list;
+}
+// in focus mode, true when the click landed on a non-selected node — swallow it so the
+// dimmed waypoint neither gets selected nor spawns a stray waypoint on top of itself.
+function lockedNodeClicked(m) {
+  if (!selNodeRef()) return false;
+  const r2 = (14 / view.scale) ** 2;
+  const hit = base => { const f = baseToField(base), s = f2s(f.x, f.y); return (s.sx-m.sx)**2 + (s.sy-m.sy)**2 <= r2; };
+  if (!isSel('start') && hit(state.start)) return true;
+  return state.steps.some((st,i) => st.kind==='move' && !isSel('step', i) && hit(st));
+}
+// field point of a spline's factor handle: out along the node heading, distance grows with factor
+function factorHandleField(base) {
+  const f = baseToField(base), th = f.hdeg * Math.PI/180;
+  const dist = HEAD_LEN + 10*(base.factor != null ? base.factor : 1);
+  return { x: f.x + dist*Math.cos(th), y: f.y + dist*Math.sin(th) };
+}
+
+let drag = null, mouseDown = null;
+
+function rawPos(e) {                 // raw logical px (0..LOGICAL), ignoring pan/zoom
+  const r = canvas.getBoundingClientRect();
+  return { px: (e.clientX - r.left) / r.width * LOGICAL, py: (e.clientY - r.top) / r.height * LOGICAL };
+}
+function mousePos(e) {               // base-logical px (pan/zoom removed) -> matches f2s output
+  const { px, py } = rawPos(e);
+  return { sx: (px - view.ox) / view.scale, sy: (py - view.oy) / view.scale };
+}
+
+canvas.addEventListener('pointerdown', e => {
+  canvas.setPointerCapture(e.pointerId);
+  const m = mousePos(e), r = rawPos(e);
+  mouseDown = { ...m, moved:false, raw:r, ox:view.ox, oy:view.oy };
+  // grab nearest handle within its grab radius (screen px, scaled to base-logical).
+  // the factor diamond gets a bigger radius + priority so it's easy to grab.
+  let best = null, bestScore = Infinity;
+  handles().forEach(h => {
+    const r = (h.kind === 'factor' ? 22 : 14) / view.scale;
+    const d = (h.sx-m.sx)**2 + (h.sy-m.sy)**2;
+    if (d > r*r) return;
+    const score = d - (h.kind === 'head' ? 16 : 0) - (h.kind === 'factor' ? 30 : 0);
+    if (score < bestScore) { bestScore = score; best = h; }
+  });
+  if (best) { drag = best; state.selected = best.ref; renderAll(); }
+  else if (lockedNodeClicked(m)) { mouseDown.consumed = true; mouseDown.pan = true; }  // dimmed node -> re-select it from the Path steps list
+  else if (selectAutoAt(m)) { mouseDown.consumed = true; }   // clicked an overlaid path -> switched auto
+  else { mouseDown.pan = true; }                      // empty space -> pan the view
+});
+
+canvas.addEventListener('pointermove', e => {
+  const m = mousePos(e);
+  const f = s2f(m.sx, m.sy);
+  document.getElementById('mouseReadout').textContent =
+    `field x ${f.fx.toFixed(1)}  y ${f.fy.toFixed(1)}`;
+  if (!mouseDown) return;
+  if ((m.sx-mouseDown.sx)**2 + (m.sy-mouseDown.sy)**2 > 9) mouseDown.moved = true;
+  if (mouseDown.pan) {                            // drag empty space -> pan
+    const r = rawPos(e);
+    view.ox = mouseDown.ox + (r.px - mouseDown.raw.px);
+    view.oy = mouseDown.oy + (r.py - mouseDown.raw.py);
+    draw(); return;
+  }
+  if (!drag) return;
+
+  const base = drag.ref.kind === 'start' ? state.start : state.steps[drag.ref.i];
+  if (drag.kind === 'pos') {
+    const b = fieldXYtoBase(snapXY(f.fx), snapXY(f.fy));
+    base.x = b.x; base.y = b.y;
+  } else if (drag.kind === 'factor') {           // drag the diamond to set spline factor
+    const node = baseToField(base), th = node.hdeg * Math.PI/180;
+    const proj = (f.fx - node.x)*Math.cos(th) + (f.fy - node.y)*Math.sin(th);
+    base.factor = Math.max(0.1, Math.min(3, Math.round(((proj - HEAD_LEN)/10)/0.05)*0.05));
+  } else { // rotate
+    const node = baseToField(base);              // current node field pos
+    const ph = Math.atan2(f.fy - node.y, f.fx - node.x) * 180/Math.PI;
+    base.h = snapH(fieldHtoBase(ph));
+  }
+  renderAll();
+});
+
+function endDrag(e) {
+  if (mouseDown && !mouseDown.moved && !drag && !mouseDown.consumed) {
+    // plain click on empty field -> add a waypoint there
+    const f = s2f(mouseDown.sx, mouseDown.sy);
+    if (Math.abs(f.fx) <= HALF+6 && Math.abs(f.fy) <= HALF+6) addMoveAt(f.fx, f.fy);
+  }
+  if (drag) save();
+  drag = null; mouseDown = null;
+}
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', endDrag);
+canvas.addEventListener('wheel', e => {            // scroll = zoom about the cursor
+  e.preventDefault();
+  const { px, py } = rawPos(e);
+  zoomAt(px, py, e.deltaY < 0 ? 1.1 : 1/1.1);
+}, { passive:false });
+
+//------------------------------ step operations -----------------------------------
+function insertIndex() {
+  const s = state.selected;
+  return (s && s.kind === 'step') ? s.i + 1 : state.steps.length;
+}
+function prevHeading(atIdx) {
+  for (let i = atIdx - 1; i >= 0; i--) if (state.steps[i].kind === 'move') return state.steps[i].h;
+  return state.start.h;
+}
+function prevPosBase(i, steps, start) {         // nearest positional node before step i (start if none)
+  steps = steps || state.steps;
+  for (let k = i - 1; k >= 0; k--) if (steps[k].kind === 'move') return steps[k];
+  return start || state.start;
+}
+function reversedForStep(i, steps, start) {     // derive drive direction from geometry (field space)
+  steps = steps || state.steps;
+  const a = baseToField(prevPosBase(i, steps, start)), b = baseToField(steps[i]);
+  const h = a.hdeg * Math.PI / 180;
+  return ((b.x - a.x) * Math.cos(h) + (b.y - a.y) * Math.sin(h)) < 0;
+}
+function addMoveAt(fx, fy) {
+  const at = insertIndex();
+  const b = fieldXYtoBase(snapXY(fx), snapXY(fy));
+  const st = { kind:'move', move:state.clickAdds, x:b.x, y:b.y, h:prevHeading(at),
+               through:false, factor:state.defFactor, maxSpeed:state.defMaxSpeed };
+  state.steps.splice(at, 0, st);
+  state.selected = { kind:'step', i:at };
+  renderAll(); save();
+}
+function addMoveCenter(kind) {
+  const at = insertIndex();
+  const st = { kind:'move', move:kind, x:0, y:0, h:prevHeading(at),
+               through:false, factor:state.defFactor, maxSpeed:state.defMaxSpeed };
+  state.steps.splice(at, 0, st);
+  state.selected = { kind:'step', i:at };
+  renderAll(); save();
+}
+function addActionStep(type) {
+  const at = insertIndex();
+  const meta = ACTIONS[type];
+  const st = Object.assign({ kind:'action', type }, meta.def ? structuredClone(meta.def) : {});
+  state.steps.splice(at, 0, st);
+  state.selected = { kind:'step', i:at };
+  renderAll(); save();
+}
+// ---- control-flow blocks (for / if-else), as balanced marker pairs in the flat list ----
+const LOOP_VARS = ['i','j','k','l','m'];
+function openBlocksAt(at) {                       // {depth, vars[]} of blocks enclosing index `at`
+  const stack = [];                               // frame: {repeat:bool, var?}
+  for (let k = 0; k < at && k < state.steps.length; k++) {
+    const kind = state.steps[k].kind;
+    if (kind === 'repeat') {
+      const nLoops = stack.filter(f => f.repeat).length;
+      stack.push({ repeat:true, var: state.steps[k].var || LOOP_VARS[nLoops] || 'i' });
+    } else if (kind === 'if') stack.push({ repeat:false });
+    else if (kind === 'end') stack.pop();
+  }
+  return { depth: stack.length, vars: stack.filter(f => f.repeat).map(f => f.var) };
+}
+function addRepeat() {
+  const at = insertIndex();
+  const ctx = openBlocksAt(at);
+  const v = LOOP_VARS[ctx.vars.length] || 'i';
+  state.steps.splice(at, 0, { kind:'repeat', count:2, var:v }, { kind:'end' });
+  state.selected = { kind:'step', i:at };
+  renderAll(); save();
+}
+function addIfElse() {
+  const at = insertIndex();
+  const ctx = openBlocksAt(at);
+  const cond = ctx.vars.length ? `${ctx.vars[ctx.vars.length-1]} % 2 == 0` : 'true';
+  state.steps.splice(at, 0, { kind:'if', cond }, { kind:'else' }, { kind:'end' });
+  state.selected = { kind:'step', i:at };
+  renderAll(); save();
+}
+function isControl(st) { return st && (st.kind==='repeat'||st.kind==='if'||st.kind==='else'||st.kind==='end'); }
+function matchingEnd(steps, openIdx) {            // index of the `end` that closes opener at openIdx
+  let depth = 0;
+  for (let k = openIdx; k < steps.length; k++) {
+    const kind = steps[k].kind;
+    if (kind === 'repeat' || kind === 'if') depth++;
+    else if (kind === 'end') { depth--; if (depth === 0) return k; }
+  }
+  return steps.length - 1;
+}
+function blockOpenerOf(steps, idx) {              // opener (repeat/if) for an else/end marker
+  let depth = 0;
+  for (let k = idx - 1; k >= 0; k--) {
+    const kind = steps[k].kind;
+    if (kind === 'end') depth++;
+    else if (kind === 'repeat' || kind === 'if') { if (depth === 0) return k; depth--; }
+  }
+  return idx;
+}
+function delBlock(openIdx) {                      // remove opener + matching end + everything between
+  const endIdx = matchingEnd(state.steps, openIdx);
+  state.steps.splice(openIdx, endIdx - openIdx + 1);
+  state.selected = null; renderAll(); save();
+}
+function moveStep(i, dir) {
+  const j = i + dir; if (j < 0 || j >= state.steps.length) return;
+  if (isControl(state.steps[i])) return;   // markers can't be dragged (would unbalance blocks)
+  // swapping a normal step with a neighboring marker is allowed: it moves the step across the block edge
+  [state.steps[i], state.steps[j]] = [state.steps[j], state.steps[i]];
+  if (state.selected && state.selected.kind==='step' && state.selected.i===i) state.selected.i = j;
+  renderAll(); save();
+}
+function dupStep(i) {
+  if (isControl(state.steps[i])) return;
+  state.steps.splice(i+1, 0, structuredClone(state.steps[i]));
+  state.selected = { kind:'step', i:i+1 }; renderAll(); save();
+}
+function delStep(i) {
+  const st = state.steps[i];
+  if (st && (st.kind === 'repeat' || st.kind === 'if')) return delBlock(i);
+  if (st && (st.kind === 'else'   || st.kind === 'end')) return delBlock(blockOpenerOf(state.steps, i));
+  state.steps.splice(i, 1);
+  state.selected = null; renderAll(); save();
+}
+
+//------------------------------ steps panel UI ------------------------------------
+const stepsList = document.getElementById('stepsList');
+
+function renderSteps() {
+  stepsList.innerHTML = '';
+  let moveNo = 0, depth = 0;
+  state.steps.forEach((st, i) => {
+    const el = document.createElement('div');
+    const sel = isSel('step', i);
+    // control markers indent their *contents*; else/end render one level out
+    const myDepth = (st.kind === 'else' || st.kind === 'end') ? Math.max(0, depth - 1) : depth;
+    el.style.marginLeft = (myDepth * 14) + 'px';
+    if (st.kind === 'repeat' || st.kind === 'if' || st.kind === 'else' || st.kind === 'end') {
+      el.className = 'step control' + (sel ? ' sel' : '');
+      el.appendChild(controlHeader(st, i));
+      if (st.kind === 'repeat' || st.kind === 'if') depth++;        // body indents one level in
+      else if (st.kind === 'end') depth = Math.max(0, depth - 1);   // block closed -> dedent
+      // 'else' keeps the same depth (closes the then-branch, opens the else-branch)
+    } else if (st.kind === 'move') {
+      moveNo++;
+      el.className = 'step ' + (st.move === 'goto' ? 'goto' : 'move') + (sel ? ' sel' : '');
+      el.appendChild(stepHeader(i, `#${moveNo} ` + (st.move === 'goto' ? 'GoTo' : 'Spline'),
+        moveSwitch(st, i)));
+      el.appendChild(moveBody(st, i));
+    } else {
+      el.className = 'step action' + (sel ? ' sel' : '');
+      el.appendChild(stepHeader(i, '· ' + (ACTIONS[st.type]?.label || st.type), null));
+      el.appendChild(actionBody(st, i));
+    }
+    el.addEventListener('click', ev => {
+      if (ev.target.closest('input,select,button,textarea')) return;
+      state.selected = { kind:'step', i }; renderAll();
+    });
+    stepsList.appendChild(el);
+  });
+  if (!state.steps.length)
+    stepsList.innerHTML = '<div class="mini" style="padding:6px">No steps yet — click the field to drop a waypoint, or use the buttons below.</div>';
+  document.getElementById('stepCount').textContent =
+    `${state.steps.length} step${state.steps.length===1?'':'s'}`;
+}
+
+// Header row for a repeat / if / else / end control marker.
+function controlHeader(st, i) {
+  const h = document.createElement('div'); h.className = 'step-head';
+  const num = `<span class="step-num">${i+1}</span>`;
+  const closeBtn = () => {
+    const b = document.createElement('button'); b.className = 'icbtn sm danger';
+    b.textContent = '✕'; b.title = 'Delete this whole block';
+    b.addEventListener('click', e => { e.stopPropagation(); delStep(i); }); return b;
+  };
+  if (st.kind === 'repeat') {
+    h.innerHTML = `${num}<span class="step-title">🔁 repeat</span>`;
+    const inp = document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='1';
+    inp.value = st.count; inp.style.width='52px';
+    inp.addEventListener('input', () => { st.count = Math.max(0, parseInt(inp.value)||0); renderAll(); });
+    inp.addEventListener('change', save);
+    h.appendChild(inp);
+    const tag = document.createElement('span'); tag.className='mini'; tag.textContent = `× (${st.var||'i'})`;
+    h.appendChild(tag); h.appendChild(closeBtn());
+  } else if (st.kind === 'if') {
+    h.innerHTML = `${num}<span class="step-title">❓ if</span>`;
+    const inp = document.createElement('input'); inp.type='text'; inp.value = st.cond || '';
+    inp.placeholder = 'i % 2 == 0'; inp.style.flex='1'; inp.style.minWidth='80px';
+    inp.title = 'Condition (loop var i/j/… and alliance are in scope for the simulator)';
+    inp.addEventListener('input', () => { st.cond = inp.value; renderAll(); });
+    inp.addEventListener('change', save);
+    h.appendChild(inp); h.appendChild(closeBtn());
+  } else if (st.kind === 'else') {
+    h.innerHTML = `${num}<span class="step-title mini">} else {</span>`;
+  } else { // end
+    h.innerHTML = `${num}<span class="step-title mini">} end</span>`;
+  }
+  return h;
+}
+
+function stepHeader(i, title, midControl) {
+  const h = document.createElement('div'); h.className = 'step-head';
+  h.innerHTML = `<span class="step-num">${i+1}</span><span class="step-title">${title}</span>`;
+  if (midControl) h.appendChild(midControl);
+  const mk = (txt, cls, fn, title2) => {
+    const b = document.createElement('button'); b.className = 'icbtn sm ' + (cls||'');
+    b.textContent = txt; if (title2) b.title = title2;
+    b.addEventListener('click', e => { e.stopPropagation(); fn(); }); return b;
+  };
+  h.appendChild(mk('↑','', ()=>moveStep(i,-1),'Move up'));
+  h.appendChild(mk('↓','', ()=>moveStep(i,+1),'Move down'));
+  h.appendChild(mk('⧉','', ()=>dupStep(i),'Duplicate'));
+  h.appendChild(mk('✕','danger', ()=>delStep(i),'Delete'));
+  return h;
+}
+
+function moveSwitch(st, i) {
+  const seg = document.createElement('div'); seg.className = 'seg'; seg.style.marginLeft='auto';
+  ['spline','goto'].forEach(k => {
+    const b = document.createElement('button'); b.className = 'sm' + (st.move===k?' on':'');
+    b.textContent = k === 'goto' ? 'GoTo' : 'Spline';
+    b.addEventListener('click', e => { e.stopPropagation(); st.move = k; renderAll(); save(); });
+    seg.appendChild(b);
+  });
+  return seg;
+}
+
+function numField(label, val, step, fn) {
+  const l = document.createElement('label'); l.className = 'fld'; l.textContent = label;
+  const inp = document.createElement('input'); inp.type='number'; inp.step=step; inp.value=val;
+  inp.addEventListener('input', () => { fn(parseFloat(inp.value)||0); });
+  inp.addEventListener('change', save);
+  l.appendChild(inp); return l;
+}
+function chkField(label, val, fn, title) {
+  const l = document.createElement('label'); l.className='chk'; if (title) l.title=title;
+  const c = document.createElement('input'); c.type='checkbox'; c.checked=val;
+  c.addEventListener('change', ()=>{ fn(c.checked); renderAll(); save(); });
+  l.appendChild(c); l.appendChild(document.createTextNode(' '+label)); return l;
+}
+
+function moveBody(st, i) {
+  const wrap = document.createElement('div');
+  const r1 = document.createElement('div'); r1.className='row';
+  r1.appendChild(numField('X', st.x, 0.5, v=>{ st.x=v; draw(); updateCode(); }));
+  r1.appendChild(numField('Y', st.y, 0.5, v=>{ st.y=v; draw(); updateCode(); }));
+  r1.appendChild(numField('H°', st.h, 1, v=>{ st.h=v; draw(); updateCode(); }));
+  r1.appendChild(numField('maxSpeed', st.maxSpeed, 0.05, v=>{ st.maxSpeed=v; updateCode(); }));
+  wrap.appendChild(r1);
+  const r2 = document.createElement('div'); r2.className='row'; r2.style.marginTop='7px';
+  r2.appendChild(chkField('through', st.through, v=>st.through=v,
+    'Pass through without precisely settling (keeps momentum into next move).'));
+  if (st.move === 'spline') {
+    r2.appendChild(numField('factor', st.factor, 0.1, v=>{ st.factor=v; draw(); updateCode(); }));
+    // reversed: auto (geometry-derived) by default; click to pin forward/reversed
+    const badge = document.createElement('button'); badge.className = 'pill'; badge.style.cursor='pointer';
+    const refresh = () => {
+      const eff = st.reversed != null ? st.reversed : reversedForStep(i);
+      badge.textContent = (eff ? '↩ reversed' : '→ forward') + (st.reversed != null ? ' (pinned)' : ' (auto)');
+    };
+    refresh();
+    badge.title = 'Drive direction. Auto = derived from geometry. Click to cycle auto → forward → reversed.';
+    badge.addEventListener('click', e => {
+      e.stopPropagation();
+      st.reversed = st.reversed == null ? false : (st.reversed === false ? true : undefined);
+      refresh(); renderAll(); save();
+    });
+    r2.appendChild(badge);
+  }
+  r2.appendChild(chkField('🔒 lock', st.locked, v=>st.locked=v,
+    'Lock this waypoint so it can\'t be dragged or nudged (does not affect the generated code).'));
+  wrap.appendChild(r2);
+  return wrap;
+}
+
+function actionBody(st, i) {
+  const wrap = document.createElement('div'); wrap.className='row';
+  // change action type
+  const sel = document.createElement('select');
+  Object.keys(ACTIONS).forEach(k => {
+    const o = document.createElement('option'); o.value=k; o.textContent=ACTIONS[k].label;
+    if (k===st.type) o.selected=true; sel.appendChild(o);
+  });
+  sel.addEventListener('change', () => {
+    const meta = ACTIONS[sel.value];
+    for (const key of Object.keys(st)) if (key!=='kind') delete st[key];
+    st.type = sel.value; Object.assign(st, meta.def ? structuredClone(meta.def) : {});
+    renderAll(); save();
+  });
+  wrap.appendChild(sel);
+
+  const meta = ACTIONS[st.type];
+  if (meta.field === 'ms') {
+    wrap.appendChild(numField('ms', st.ms, 50, v=>st.ms=v));
+  } else if (meta.field === 'sel') {
+    const s2 = document.createElement('select');
+    meta.opts.forEach(o => { const op=document.createElement('option'); op.value=o; op.textContent=o;
+      if (o===st.mode) op.selected=true; s2.appendChild(op); });
+    s2.addEventListener('change', ()=>{ st.mode=s2.value; renderAll(); save(); });
+    wrap.appendChild(s2);
+  } else if (meta.field === 'txt') {
+    const t = document.createElement('input'); t.type='text'; t.value=st.text||''; t.style.flex='1';
+    t.placeholder='raw Java line e.g. robot.intake.in();';
+    t.addEventListener('input', ()=>{ st.text=t.value; updateCode(); });
+    t.addEventListener('change', save);
+    wrap.appendChild(t);
+  }
+  return wrap;
+}
+
+//------------------------------ code generation -----------------------------------
+function pose(base) {
+  return `new Pose2D(${fmt(base.x)}, ${fmt(base.y)}*alliance, Math.toRadians(180 - ${fmt(base.h)}*alliance))`;
+}
+function genStep(st, i, steps, start) {
+  if (st.kind === 'move') {
+    if (st.move === 'goto')
+      return `drive.goToPoint(${pose(st)}, ${st.through}, ${fmt(st.maxSpeed)});\ndriveToTarget();`;
+    const rev = st.reversed != null ? st.reversed : reversedForStep(i, steps, start);
+    return `drive.splineToPoint(${pose(st)}, ${st.through}, ${rev}, ${fmt(st.factor)}, ${fmt(st.maxSpeed)});\ndriveToTarget();`;
+  }
+  return ACTIONS[st.type].gen(st);
+}
+
+// Walks the flat step list, emitting for/if/else/} blocks with nested indentation.
+function genBodyFor(auto, baseIndent, withSetPos) {
+  const out = [];
+  if (withSetPos)
+    out.push(baseIndent + `localizer.setPosition(${pose(auto.start)});`);
+  let depth = 0;
+  const ind = () => baseIndent + '    '.repeat(depth);
+  auto.steps.forEach((st, i) => {
+    if (st.kind === 'repeat') {
+      const v = st.var || 'i';
+      out.push(`${ind()}for (int ${v} = 0; ${v} < ${Math.max(0, Math.round(st.count) || 0)}; ${v}++) {`);
+      depth++;
+    } else if (st.kind === 'if') {
+      out.push(`${ind()}if (${st.cond || 'true'}) {`); depth++;
+    } else if (st.kind === 'else') {
+      depth = Math.max(0, depth - 1); out.push(`${ind()}} else {`); depth++;
+    } else if (st.kind === 'end') {
+      depth = Math.max(0, depth - 1); out.push(`${ind()}}`);
+    } else {
+      const code = genStep(st, i, auto.steps, auto.start);
+      code.split('\n').forEach(line => out.push(ind() + line));
+    }
+  });
+  return out.join('\n');
+}
+
+function genMethod() {
+  const auto = curAuto();
+  const name = sanitize(auto.name) || 'My_Auto';
+  return [
+    '// ===== Generated by Neuron Path Planner =====',
+    '// Paste into an OpMode in your season repo that already has:',
+    '//   - `drive` (NeuronDrive) / `localizer` (NeuronLocalizer) + driveToTarget()/waitMs()',
+    '//     helpers (see NeuronSplineAuto.java for the pattern), for the movement calls, and',
+    '//   - `robot` (your season\'s Robot facade) + shoot()/farShoot()/pulseOuttake() helpers',
+    '//     and an `alliance` field (-1 Blue / +1 Red), for the shoot/intake/gate/turret calls.',
+    '// Or switch this tool to "Full OpMode" output to generate all of that scaffolding too.',
+    `public void ${name}() {`,
+    genBodyFor(auto, '    ', state.includeSetPos),
+    '}'
+  ].join('\n');
+}
+
+function genOpMode() {
+  const cls = sanitize(state.opModeName) || 'auto';
+  const autos = state.autos;
+  // Each auto becomes: a selectable name, an init-loop start pose (by index), a
+  // run-time switch case, and its own method -- mirroring NeuronSplineAuto.java.
+  const namesArr = autos.map(a => `            "${(a.label || a.name).replace(/"/g,'\\"')}",`).join('\n');
+  const initCases = autos.map((a, i) =>
+`                case ${i}:
+                    localizer.setPosition(${pose(a.start)});
+                    break;`).join('\n');
+  const runCases = autos.map((a, i) =>
+`            case ${i}:
+                ${sanitize(a.name) || ('Auto' + i)}();
+                break;`).join('\n');
+  const methods = autos.map(a => {
+    const mn = sanitize(a.name) || 'Auto';
+    return [
+`    public void ${mn}() {`,
+genBodyFor(a, '        ', false),
+`    }`].join('\n');
+  }).join('\n\n');
+  return [
+`package org.firstinspires.ftc.teamcode.opmodes;`,
+``,
+`import com.qualcomm.robotcore.eventloop.opmode.Autonomous;`,
+`import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;`,
+``,
+`import org.firstinspires.ftc.teamcode.Robot;                       // your season's subsystem facade`,
+`import org.firstinspires.ftc.teamcode.subsystems.turret.Turret;    // for shoot/intake/gate/turret actions`,
+`import org.firstinspires.ftc.teamcode.utils.CONSTANTS;`,
+`import org.firstinspires.ftc.teamcode.neuronpathing.NeuronDrive;`,
+`import org.firstinspires.ftc.teamcode.neuronpathing.NeuronLocalizer;`,
+`import org.firstinspires.ftc.teamcode.neuronpathing.Pose2D;`,
+``,
+`// ===== Generated by Neuron Path Planner =====`,
+`// TODO set the Pinpoint offsets (xOffsetMm/yOffsetMm) and NeuronDrive trackWidthIn`,
+`// below for your own robot (Installation/Tuning docs). Movement runs on the Neuron`,
+`// Pathing library directly (drive/localizer); shoot/intake/gate/turret actions still`,
+`// go through this season's Robot facade -- drop the Robot/Turret/CONSTANTS imports`,
+`// above (and the action calls below) if your OpMode doesn't need them.`,
+`@Autonomous(name = "${cls}")`,
+`public class ${cls} extends LinearOpMode {`,
+`    Robot robot;`,
+`    NeuronLocalizer localizer;`,
+`    NeuronDrive drive;`,
+`    int alliance = -1; // -1 = Blue, +1 = Red -- mirrors X across the field`,
+`    int autoIndex = 0;`,
+`    String[] autoNames = {`,
+namesArr,
+`    };`,
+``,
+`    @Override`,
+`    public void runOpMode() throws InterruptedException {`,
+`        robot = new Robot(hardwareMap, telemetry, this);`,
+`        localizer = new NeuronLocalizer(hardwareMap, telemetry, /*xOffsetMm=*/0, /*yOffsetMm=*/0);`,
+`        drive = new NeuronDrive(hardwareMap, localizer, /*trackWidthIn=*/14);`,
+`        robot.turret.turretState = Turret.TurretState.AUTO;`,
+`        robot.gate.close();`,
+`        localizer.calibrate(true);`,
+``,
+`        while (opModeInInit() && !isStopRequested()) {`,
+`            if (gamepad1.x) { CONSTANTS.alliance = CONSTANTS.Alliance.BLUE; alliance = -1; }`,
+`            else if (gamepad1.b) { CONSTANTS.alliance = CONSTANTS.Alliance.RED; alliance = 1; }`,
+`            CONSTANTS.updateGoal();`,
+``,
+`            if (gamepad1.dpadUpWasPressed()) { autoIndex++; }`,
+`            else if (gamepad1.dpadDownWasPressed()) { autoIndex--; }`,
+`            autoIndex = (autoIndex + autoNames.length) % autoNames.length;`,
+``,
+`            switch (autoIndex) {`,
+initCases,
+`            }`,
+``,
+`            robot.turret.update();`,
+`            telemetry.addLine("===== AUTO SELECT =====");`,
+`            telemetry.addData("Alliance", alliance == -1 ? "Blue" : "Red");`,
+`            telemetry.addData("Auto", autoNames[autoIndex]);`,
+`            telemetry.addLine("DPAD UP/DOWN = change auto, X/B = Blue/Red");`,
+`            telemetry.update();`,
+`        }`,
+``,
+`        waitForStart();`,
+`        if (isStopRequested()) return;`,
+``,
+`        switch (autoIndex) {`,
+runCases,
+`        }`,
+`    }`,
+``,
+methods,
+``,
+`    // Blocks until the active goToPoint()/splineToPoint() move finishes. NeuronDrive`,
+`    // only moves while update() is being called, so every move needs one of these.`,
+`    private void driveToTarget() {`,
+`        while (opModeIsActive() && drive.isBusy()) {`,
+`            drive.update();`,
+`            robot.turret.update();`,
+`            telemetry.update();`,
+`            idle();`,
+`        }`,
+`    }`,
+``,
+`    // Pauses for ms milliseconds while still actively holding position.`,
+`    private void waitMs(double ms) {`,
+`        double start = System.currentTimeMillis();`,
+`        while (opModeIsActive() && System.currentTimeMillis() - start < ms) {`,
+`            drive.update();`,
+`            robot.turret.update();`,
+`            idle();`,
+`        }`,
+`    }`,
+``,
+`    public void shoot() {`,
+`        waitMs(100);`,
+`        robot.gate.open();`,
+`        robot.intake.shoot();`,
+`        waitMs(500);`,
+`        robot.gate.close();`,
+`        robot.intake.in();`,
+`    }`,
+``,
+`    public void farShoot() {`,
+`        waitMs(300);`,
+`        robot.gate.open();`,
+`        robot.intake.farzoneshoot();`,
+`        waitMs(500);`,
+`        robot.gate.close();`,
+`        robot.intake.in();`,
+`    }`,
+``,
+`    public void pulseOuttake(int ms) {`,
+`        robot.intake.out();`,
+`        waitMs(ms);`,
+`        robot.intake.in();`,
+`    }`,
+`}`
+  ].join('\n');
+}
+
+function sanitize(s) { return (s||'').trim().replace(/[^A-Za-z0-9_]/g, '_'); }
+
+let codeCache = '';
+function updateCode() {
+  codeCache = state.output === 'opmode' ? genOpMode() : genMethod();
+  document.getElementById('codeOut').value = codeCache;
+}
+
+//------------------------------ orchestration -------------------------------------
+function renderAll() {
+  if (sim.active) sim.segs = null;     // path may have changed -> rebuild timeline on next draw
+  draw(); renderSteps(); syncInputs(); updateCode();
+  if (sim.active) updateSimReadout();
+}
+
+function syncInputs() {
+  document.getElementById('methodName').value = state.methodName;
+  document.getElementById('opModeName').value = state.opModeName;
+  document.getElementById('autoLabel').value = curAuto().label || '';
+  document.getElementById('startX').value = state.start.x;
+  document.getElementById('startY').value = state.start.y;
+  document.getElementById('startH').value = state.start.h;
+  document.getElementById('optSetPos').checked = state.includeSetPos;
+  document.getElementById('optGrid').checked = state.showGrid;
+  document.getElementById('optZones').checked = state.showZones;
+  document.getElementById('optSnap').checked = state.snap;
+  document.getElementById('optSpeed').checked = state.showSpeed;
+  syncCompare();
+  document.getElementById('optRobot').checked = state.showRobot;
+  document.getElementById('optVideo').checked = state.videoShow;
+  document.getElementById('videoOpacity').value = Math.round((state.videoOpacity == null ? 0.55 : state.videoOpacity) * 100);
+  document.getElementById('videoScaleSlider').value = Math.round((state.videoScale == null ? 1 : state.videoScale) * 100);
+  document.getElementById('videoScaleVal').textContent = `${Math.round((state.videoScale == null ? 1 : state.videoScale) * 100)}%`;
+  document.getElementById('videoOffsetXSlider').value = state.videoOffsetX || 0;
+  document.getElementById('videoOffsetXVal').textContent = `${state.videoOffsetX || 0}px`;
+  document.getElementById('videoOffsetYSlider').value = state.videoOffsetY || 0;
+  document.getElementById('videoOffsetYVal').textContent = `${state.videoOffsetY || 0}px`;
+  document.getElementById('youtubeUrl').value = state.youtubeUrl || '';
+  document.getElementById('optBg').checked = state.bgShow;
+  document.getElementById('robotW').value = state.robotW;
+  document.getElementById('robotL').value = state.robotL;
+  document.getElementById('simMaxV').value = state.simMaxV;
+  document.getElementById('simMaxA').value = state.simMaxA;
+  document.getElementById('defMaxSpeed').value = state.defMaxSpeed;
+  document.getElementById('defFactor').value = state.defFactor;
+  document.getElementById('accent').value = state.accent;
+  applyAccent();
+  document.getElementById('simRate').value = String(sim.rate);
+  document.getElementById('opModeNameRow').style.display = state.output === 'opmode' ? '' : 'none';
+  segSet('allianceSeg','a',state.previewAlliance);
+  segSet('outputSeg','o',state.output);
+  segSet('clickAddsSeg','k',state.clickAdds);
+  renderAutoTabs();
+  updateVideoControls();
+}
+// compare slider: clamp to the auto count, refresh readout + colour/name key
+function syncCompare() {
+  const maxN = Math.max(0, state.autos.length - 1);
+  if (state.cmpCount > maxN) state.cmpCount = maxN;
+  const sl = document.getElementById('cmpSlider');
+  sl.max = maxN; sl.value = state.cmpCount; sl.disabled = maxN === 0;
+  document.getElementById('cmpVal').textContent = state.cmpCount;
+  const leg = document.getElementById('cmpLegend'); leg.innerHTML = '';
+  shownNeighbors().forEach((ai, k) => {
+    const s = document.createElement('span'); s.style.display = 'inline-flex'; s.style.alignItems = 'center'; s.style.gap = '4px';
+    s.innerHTML = `<span class="swatch" style="background:${NEIGH_COLORS[k % NEIGH_COLORS.length]}"></span>`;
+    s.appendChild(document.createTextNode(sanitize(state.autos[ai].name) || ('Auto' + ai)));
+    leg.appendChild(s);
+  });
+}
+function fmtTime(t) {
+  if (!Number.isFinite(t) || t < 0) t = 0;
+  const m = Math.floor(t / 60), s = Math.floor(t % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+function updateVideoControls() {
+  const localLoaded = videoKind === 'local' && !!video.src && Number.isFinite(video.duration) && video.duration > 0;
+  const youtubeLoaded = videoKind === 'youtube' && !!youtubeFrame.src;
+  const loaded = localLoaded || youtubeLoaded;
+  document.getElementById('videoPlay').disabled = !loaded;
+  document.getElementById('videoClear').disabled = !loaded;
+  document.getElementById('videoScrub').disabled = !localLoaded;
+  document.getElementById('videoPlay').textContent = (videoKind === 'youtube' ? youtubePlaying : !video.paused) ? 'Pause' : 'Play';
+  document.getElementById('videoStatus').textContent = !loaded ? 'none' : videoKind === 'youtube' ? 'YouTube' : (video.paused ? 'loaded' : 'playing');
+  document.getElementById('videoTime').textContent = localLoaded ? `${fmtTime(video.currentTime)} / ${fmtTime(video.duration)}` : 'YouTube';
+  document.getElementById('youtubeHint').style.display =
+    (location.protocol === 'file:' && (state.youtubeUrl || videoKind === 'youtube')) ? '' : 'none';
+  if (localLoaded && !videoScrubbing) {
+    document.getElementById('videoScrub').value = String(Math.round((video.currentTime / video.duration) * 1000));
+  }
+  updateVideoFrames();
+}
+function startVideoLoop() {
+  if (videoLoop) return;
+  const tick = () => {
+    videoLoop = null;
+    updateVideoControls();
+    if (!video.paused && !video.ended) startVideoLoop();
+  };
+  videoLoop = requestAnimationFrame(tick);
+}
+function stopVideoLoop() {
+  if (videoLoop) cancelAnimationFrame(videoLoop);
+  videoLoop = null;
+}
+function clearVideoOverlay() {
+  video.pause();
+  stopVideoLoop();
+  if (videoUrl) URL.revokeObjectURL(videoUrl);
+  videoUrl = null;
+  video.removeAttribute('src');
+  video.style.display = 'none';
+  video.load();
+  youtubeFrame.removeAttribute('src');
+  youtubeFrame.style.display = 'none';
+  videoKind = '';
+  youtubePlaying = false;
+  state.youtubeUrl = '';
+  document.getElementById('youtubeUrl').value = '';
+  draw();
+  updateVideoControls();
+}
+function parseYoutubeId(raw) {
+  const s = (raw || '').trim();
+  if (!s) return '';
+  try {
+    const u = new URL(s);
+    if (u.hostname.includes('youtu.be')) return u.pathname.split('/').filter(Boolean)[0] || '';
+    if (u.searchParams.get('v')) return u.searchParams.get('v');
+    const parts = u.pathname.split('/').filter(Boolean);
+    const key = parts.findIndex(p => ['embed', 'shorts', 'live'].includes(p));
+    if (key >= 0 && parts[key + 1]) return parts[key + 1];
+  } catch(e) {}
+  const m = s.match(/(?:v=|youtu\.be\/|embed\/|shorts\/|live\/)([A-Za-z0-9_-]{6,})/);
+  return m ? m[1] : '';
+}
+function loadYoutubeOverlay(raw, notify) {
+  const id = parseYoutubeId(raw);
+  if (!id) { if (notify) toast('Bad YouTube link'); return false; }
+  video.pause();
+  stopVideoLoop();
+  if (videoUrl) URL.revokeObjectURL(videoUrl);
+  videoUrl = null;
+  video.removeAttribute('src');
+  video.style.display = 'none';
+  video.load();
+  videoKind = 'youtube';
+  youtubePlaying = false;
+  state.youtubeUrl = raw.trim();
+  state.videoShow = true;
+  youtubeFrame.src = youtubeEmbedUrl(id);
+  updateVideoFrames();
+  syncInputs();
+  if (notify) toast(location.protocol === 'file:' ? 'Open from localhost for YouTube' : 'YouTube loaded');
+  return true;
+}
+function youtubeEmbedUrl(id) {
+  const params = new URLSearchParams({
+    playsinline:'1',
+    rel:'0'
+  });
+  if (location.protocol && location.protocol !== 'file:') {
+    if (location.origin && location.origin !== 'null') {
+      params.set('origin', location.origin);
+    }
+    params.set('enablejsapi', '1');
+    params.set('widget_referrer', location.href);
+  }
+  return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?${params.toString()}`;
+}
+function updateVideoFrames() {
+  const ytShown = state.videoShow && videoKind === 'youtube' && !!youtubeFrame.src;
+  const localShown = state.videoShow && videoKind === 'local' && !!video.src;
+  
+  youtubeFrame.style.display = ytShown ? 'block' : 'none';
+  video.style.display = localShown ? 'block' : 'none';
+  
+  const activeFrame = ytShown ? youtubeFrame : (localShown ? video : null);
+  if (!activeFrame) return;
+  
+  const wrap = canvas.parentElement.getBoundingClientRect();
+  const box = canvas.getBoundingClientRect();
+  
+  [youtubeFrame, video].forEach(frame => {
+    frame.style.left = `${box.left - wrap.left}px`;
+    frame.style.top = `${box.top - wrap.top}px`;
+    frame.style.width = `${box.width}px`;
+    frame.style.height = `${box.height}px`;
+    frame.style.opacity = String(Math.max(0, Math.min(1, state.videoOpacity == null ? 0.55 : state.videoOpacity)));
+  });
+  
+  const r = box.width / LOGICAL;
+  const tx = (state.videoOffsetX || 0) * r;
+  const ty = (state.videoOffsetY || 0) * r;
+  const scale = state.videoScale == null ? 1 : state.videoScale;
+  const rx = state.videoPerspectiveX || 0;
+  const ry = state.videoPerspectiveY || 0;
+  
+  const transformStr = `perspective(1000px) translate3d(${tx}px, ${ty}px, 0px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${state.videoRot || 0}deg) scale(${scale})`;
+  
+  youtubeFrame.style.transform = transformStr;
+  video.style.transform = transformStr;
+}
+function youtubeCommand(func) {
+  if (!youtubeFrame.contentWindow) return;
+  youtubeFrame.contentWindow.postMessage(JSON.stringify({ event:'command', func, args:[] }), '*');
+}
+function renderAutoTabs() {
+  const wrap = document.getElementById('autoTabs');
+  wrap.innerHTML = '';
+  state.autos.forEach((a, i) => {
+    const b = document.createElement('button');
+    b.className = 'sm' + (i === state.activeAuto ? ' on' : '');
+    if (i === state.activeAuto) { b.style.background = 'var(--accent)'; b.style.color = '#04121f'; }
+    b.textContent = (sanitize(a.name) || ('Auto' + i)) + ` (${a.steps.length})`;
+    b.addEventListener('click', () => switchAuto(i));
+    wrap.appendChild(b);
+  });
+  document.getElementById('autoCount').textContent =
+    `${state.autos.length} auto${state.autos.length === 1 ? '' : 's'}`;
+  document.getElementById('delAuto').disabled = state.autos.length <= 1;
+  document.getElementById('moveAutoL').disabled = state.activeAuto <= 0;
+  document.getElementById('moveAutoR').disabled = state.activeAuto >= state.autos.length - 1;
+}
+function segSet(id, attr, val) {
+  document.querySelectorAll(`#${id} button`).forEach(b =>
+    b.classList.toggle('on', b.dataset[attr] === val));
+}
+
+//------------------------------ multi-auto operations -----------------------------
+function switchAuto(i) {
+  if (i < 0 || i >= state.autos.length || i === state.activeAuto) { renderAutoTabs(); return; }
+  state.activeAuto = i; state.selected = null;
+  simPause(); sim.segs = null; sim.t = 0;     // restart the sim on the newly selected auto
+  renderAll(); persist();
+}
+function uniqueAutoName(base) {                  // ensure the name doesn't collide with an existing auto
+  if (!state.autos.some(a => a.name === base)) return base;
+  let n = 2; while (state.autos.some(a => a.name === `${base}_${n}`)) n++;
+  return `${base}_${n}`;
+}
+function addAuto() {
+  let n = state.autos.length + 1, base = 'Auto_' + n;
+  while (state.autos.some(a => a.name === base)) base = 'Auto_' + (++n);
+  state.autos.push(defaultAuto(base));
+  state.activeAuto = state.autos.length - 1; state.selected = null;
+  renderAll(); save();
+}
+function dupAuto() {
+  const copy = structuredClone(curAuto());
+  copy.name = uniqueAutoName((copy.name || 'Auto') + '_copy');
+  copy.label = (copy.label || copy.name) + ' copy';
+  state.autos.splice(state.activeAuto + 1, 0, copy);
+  state.activeAuto += 1; state.selected = null;
+  simPause(); sim.segs = null; sim.t = 0;
+  renderAll(); save();
+}
+function moveAuto(dir) {
+  const i = state.activeAuto, j = i + dir;
+  if (j < 0 || j >= state.autos.length) return;
+  [state.autos[i], state.autos[j]] = [state.autos[j], state.autos[i]];
+  state.activeAuto = j;
+  renderAll(); save();
+}
+function delAuto() {
+  if (state.autos.length <= 1) return;
+  if (!confirm(`Delete auto "${curAuto().name}"?`)) return;
+  state.autos.splice(state.activeAuto, 1);
+  if (state.activeAuto >= state.autos.length) state.activeAuto = state.autos.length - 1;
+  state.selected = null; simPause(); sim.segs = null; sim.t = 0;
+  renderAll(); save();
+}
+
+//------------------------------ wiring controls -----------------------------------
+function bindSeg(id, attr, fn) {
+  document.querySelectorAll(`#${id} button`).forEach(b =>
+    b.addEventListener('click', () => { fn(b.dataset[attr]); }));
+}
+bindSeg('allianceSeg','a', v => { state.previewAlliance=v; renderAll(); save(); });
+bindSeg('outputSeg','o',   v => { state.output=v; renderAll(); save(); });
+bindSeg('clickAddsSeg','k',v => { state.clickAdds=v; renderAll(); save(); });
+
+document.getElementById('methodName').addEventListener('input', e => { state.methodName=e.target.value; renderAutoTabs(); updateCode(); });
+document.getElementById('methodName').addEventListener('change', save);
+document.getElementById('opModeName').addEventListener('input', e => { state.opModeName=e.target.value; updateCode(); });
+document.getElementById('opModeName').addEventListener('change', save);
+document.getElementById('autoLabel').addEventListener('input', e => { curAuto().label=e.target.value; updateCode(); });
+document.getElementById('autoLabel').addEventListener('change', save);
+document.getElementById('addAuto').addEventListener('click', addAuto);
+document.getElementById('dupAuto').addEventListener('click', dupAuto);
+document.getElementById('moveAutoL').addEventListener('click', ()=>moveAuto(-1));
+document.getElementById('moveAutoR').addEventListener('click', ()=>moveAuto(+1));
+document.getElementById('delAuto').addEventListener('click', delAuto);
+document.getElementById('importJava').addEventListener('click', ()=>document.getElementById('importJavaFile').click());
+document.getElementById('importJavaFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => importOpMode(r.result);
+  r.readAsText(f); e.target.value='';
+});
+const bindNum = (id, fn) => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => { fn(parseFloat(el.value)||0); draw(); updateCode(); });
+  el.addEventListener('change', save);
+};
+bindNum('startX', v=>state.start.x=v);
+bindNum('startY', v=>state.start.y=v);
+bindNum('startH', v=>state.start.h=v);
+
+const bindChk = (id, fn) => document.getElementById(id).addEventListener('change', e => { fn(e.target.checked); renderAll(); save(); });
+bindChk('optSetPos', v=>state.includeSetPos=v);
+bindChk('optGrid',   v=>state.showGrid=v);
+bindChk('optZones',  v=>state.showZones=v);
+bindChk('optSnap',   v=>state.snap=v);
+bindChk('optSpeed',  v=>state.showSpeed=v);
+bindChk('optRobot',  v=>state.showRobot=v);
+document.getElementById('cmpSlider').addEventListener('input', e => {
+  state.cmpCount = parseInt(e.target.value) || 0; draw(); syncCompare(); save();
+});
+bindChk('optVideo',  v=>state.videoShow=v);
+bindChk('optBg',     v=>state.bgShow=v);
+const bindDim = (id, fn) => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => { fn(parseFloat(el.value)||0); state.showRobot = true; draw(); });
+  el.addEventListener('change', () => { syncInputs(); save(); });
+};
+bindDim('robotW', v=>state.robotW=v);
+bindDim('robotL', v=>state.robotL=v);
+
+// ---- simulator controls ----
+document.getElementById('simPlay').addEventListener('click', simTogglePlay);
+document.getElementById('simStep').addEventListener('click', simStepFeature);
+document.getElementById('simRestart').addEventListener('click', simRestart);
+document.getElementById('simRate').addEventListener('change', e => { sim.rate = parseFloat(e.target.value) || 1; });
+document.getElementById('simScrub').addEventListener('input', e => simScrubTo((+e.target.value) / 1000));
+// settings: speed/accel re-time the sim; defaults seed new waypoints; accent recolours the UI
+const bindSetting = (id, fn, dflt) => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => { fn(parseFloat(el.value)); sim.segs = null; if (sim.active) { draw(); updateSimReadout(); } });
+  el.addEventListener('change', save);
+};
+bindSetting('simMaxV', v => state.simMaxV = v || 93.2);
+bindSetting('simMaxA', v => state.simMaxA = (v >= 0 ? v : 80));
+document.getElementById('defMaxSpeed').addEventListener('input', e => { state.defMaxSpeed = parseFloat(e.target.value) || 1; });
+document.getElementById('defMaxSpeed').addEventListener('change', save);
+document.getElementById('defFactor').addEventListener('input', e => { state.defFactor = parseFloat(e.target.value) || 1; });
+document.getElementById('defFactor').addEventListener('change', save);
+document.getElementById('accent').addEventListener('input', e => { state.accent = e.target.value; applyAccent(); });
+document.getElementById('accent').addEventListener('change', save);
+document.getElementById('fitView').addEventListener('click', resetView);
+document.getElementById('bgRotL').addEventListener('click', ()=>{ state.bgRot=((state.bgRot||0)+270)%360; draw(); save(); });
+document.getElementById('bgRotR').addEventListener('click', ()=>{ state.bgRot=((state.bgRot||0)+90)%360; draw(); save(); });
+document.getElementById('bgFlipBtn').addEventListener('click', ()=>{ state.bgFlip=!state.bgFlip; draw(); save(); });
+document.getElementById('bgResetBtn').addEventListener('click', ()=>{
+  state.bgImage=null; state.bgRot=270; state.bgFlip=false; state.bgShow=true;
+  setBackground(); syncInputs(); save(); toast('DECODE field');
+});
+
+let videoScrubbing = false;
+document.getElementById('youtubeLoad').addEventListener('click', () => {
+  if (loadYoutubeOverlay(document.getElementById('youtubeUrl').value, true)) save();
+});
+document.getElementById('youtubeUrl').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (loadYoutubeOverlay(e.target.value, true)) save();
+    e.preventDefault();
+  }
+});
+document.getElementById('youtubeUrl').addEventListener('change', e => {
+  state.youtubeUrl = e.target.value.trim();
+  save();
+});
+document.getElementById('videoBtn').addEventListener('click', ()=>document.getElementById('videoFile').click());
+document.getElementById('videoFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  clearVideoOverlay();
+  videoKind = 'local';
+  videoUrl = URL.createObjectURL(f);
+  video.src = videoUrl;
+  state.videoShow = true;
+  video.load();
+  syncInputs();
+  save();
+  toast('Video loaded');
+  e.target.value = '';
+});
+document.getElementById('videoPlay').addEventListener('click', async () => {
+  if (videoKind === 'youtube') {
+    youtubePlaying = !youtubePlaying;
+    youtubeCommand(youtubePlaying ? 'playVideo' : 'pauseVideo');
+    updateVideoControls();
+    return;
+  }
+  if (!video.src) return;
+  if (video.paused) {
+    try { await video.play(); startVideoLoop(); }
+    catch(e) { toast('Video blocked'); }
+  } else {
+    video.pause();
+  }
+  updateVideoControls();
+});
+document.getElementById('videoClear').addEventListener('click', () => {
+  clearVideoOverlay();
+  save();
+  toast('Video cleared');
+});
+document.getElementById('videoScrub').addEventListener('input', e => {
+  videoScrubbing = true;
+  if (video.src && Number.isFinite(video.duration) && video.duration > 0) {
+    video.currentTime = (+e.target.value / 1000) * video.duration;
+    draw();
+    updateVideoControls();
+  }
+});
+document.getElementById('videoScrub').addEventListener('change', () => {
+  videoScrubbing = false;
+  updateVideoControls();
+});
+document.getElementById('videoOpacity').addEventListener('input', e => {
+  state.videoOpacity = (+e.target.value || 0) / 100;
+  draw();
+  updateVideoFrames();
+});
+document.getElementById('videoOpacity').addEventListener('change', save);
+document.getElementById('videoRotL').addEventListener('click', () => {
+  state.videoRot = (((state.videoRot || 0) + 270) % 360);
+  draw(); updateVideoFrames(); save();
+});
+document.getElementById('videoRotR').addEventListener('click', () => {
+  state.videoRot = (((state.videoRot || 0) + 90) % 360);
+  draw(); updateVideoFrames(); save();
+});
+document.getElementById('videoScaleSlider').addEventListener('input', e => {
+  state.videoScale = (+e.target.value || 100) / 100;
+  document.getElementById('videoScaleVal').textContent = `${e.target.value}%`;
+  draw();
+  updateVideoFrames();
+});
+document.getElementById('videoScaleSlider').addEventListener('change', save);
+
+document.getElementById('videoOffsetXSlider').addEventListener('input', e => {
+  state.videoOffsetX = +e.target.value || 0;
+  document.getElementById('videoOffsetXVal').textContent = `${e.target.value}px`;
+  draw();
+  updateVideoFrames();
+});
+document.getElementById('videoOffsetXSlider').addEventListener('change', save);
+
+document.getElementById('videoOffsetYSlider').addEventListener('input', e => {
+  state.videoOffsetY = +e.target.value || 0;
+  document.getElementById('videoOffsetYVal').textContent = `${e.target.value}px`;
+  draw();
+  updateVideoFrames();
+});
+document.getElementById('videoOffsetYSlider').addEventListener('change', save);
+
+document.getElementById('videoResetTransform').addEventListener('click', () => {
+  state.videoScale = 1;
+  state.videoOffsetX = 0;
+  state.videoOffsetY = 0;
+  state.videoRot = 0;
+  draw();
+  updateVideoFrames();
+  syncInputs();
+  save();
+  toast('Alignment reset');
+});
+window.addEventListener('resize', updateVideoFrames);
+video.addEventListener('loadedmetadata', () => { draw(); updateVideoControls(); });
+video.addEventListener('timeupdate', updateVideoControls);
+video.addEventListener('play', () => { startVideoLoop(); updateVideoControls(); });
+video.addEventListener('pause', () => { stopVideoLoop(); draw(); updateVideoControls(); });
+video.addEventListener('ended', () => { stopVideoLoop(); draw(); updateVideoControls(); });
+
+document.getElementById('addSpline').addEventListener('click', ()=>addMoveCenter('spline'));
+document.getElementById('addGoto').addEventListener('click', ()=>addMoveCenter('goto'));
+document.getElementById('addAction').addEventListener('click', ()=>addActionStep(document.getElementById('addActionType').value));
+document.getElementById('addRepeat').addEventListener('click', addRepeat);
+document.getElementById('addIfElse').addEventListener('click', addIfElse);
+document.querySelectorAll('.quickbar [data-qa]').forEach(b =>
+  b.addEventListener('click', () => addActionStep(b.dataset.qa)));
+
+// populate action type dropdown
+(function(){
+  const sel = document.getElementById('addActionType');
+  Object.keys(ACTIONS).forEach(k => { const o=document.createElement('option'); o.value=k; o.textContent=ACTIONS[k].label; sel.appendChild(o); });
+})();
+
+document.getElementById('copyBtn').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(codeCache); toast('Copied!'); }
+  catch(e){ const t=document.getElementById('codeOut'); t.select(); document.execCommand('copy'); toast('Copied!'); }
+});
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const opmode = state.output === 'opmode';
+  const name = sanitize(opmode ? state.opModeName : state.methodName) || 'auto';
+  downloadBlob(codeCache, name + (opmode ? '.java' : '.txt'), 'text/plain');
+});
+document.getElementById('exportBtn').addEventListener('click', () => {
+  downloadBlob(JSON.stringify(state, null, 2), (sanitize(state.methodName)||'path')+'.json', 'application/json');
+});
+document.getElementById('importBtn').addEventListener('click', ()=>document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { try { const s=JSON.parse(r.result); if (s && (s.autos || s.steps)){
+      adoptState(s); state.selected=null;
+      setBackground(); renderAll(); save(); toast('Loaded'); } } catch(err){ toast('Bad file'); } };
+  r.readAsText(f); e.target.value='';
+});
+document.getElementById('bgBtn').addEventListener('click', ()=>document.getElementById('bgFile').click());
+document.getElementById('bgFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { state.bgImage = r.result; setBackground(); save(); };
+  r.readAsDataURL(f); e.target.value='';
+});
+document.getElementById('clearAll').addEventListener('click', () => {
+  if (confirm('Clear ALL autos and start poses? (field image resets to DECODE)')) {
+    adoptState(defaultState()); setBackground(); renderAll(); save();
+  }
+});
+document.getElementById('loadExample').addEventListener('click', loadExample);
+document.getElementById('undoBtn').addEventListener('click', undo);
+document.getElementById('redoBtn').addEventListener('click', redo);
+
+// keyboard: delete / nudge selected node
+window.addEventListener('keydown', e => {
+  if (['INPUT','SELECT','TEXTAREA','BUTTON'].includes(document.activeElement.tagName)) return;
+  const ctrl = e.ctrlKey || e.metaKey;
+  if (ctrl && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (ctrl && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); redo(); return; }
+  if (e.key === ' ') { e.preventDefault(); simTogglePlay(); return; }   // space = play/pause sim
+  if (e.key === '0') { e.preventDefault(); resetView(); return; }       // 0 = reset zoom/pan
+  if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomAt(LOGICAL/2, LOGICAL/2, 1.1); return; }
+  if (e.key === '-' || e.key === '_') { e.preventDefault(); zoomAt(LOGICAL/2, LOGICAL/2, 1/1.1); return; }
+  const node = selectedNode();
+  if ((e.key==='Delete'||e.key==='Backspace') && state.selected && state.selected.kind==='step') {
+    delStep(state.selected.i); e.preventDefault(); return;
+  }
+  if (!node || node.locked) return;
+  const step = state.snap ? 0.5 : 1;
+  // nudge in FIELD space then convert, so arrows feel natural in the preview
+  const f = baseToField(node);
+  let moved = true;
+  if (e.key==='ArrowUp')    f.x += step;
+  else if (e.key==='ArrowDown')  f.x -= step;
+  else if (e.key==='ArrowLeft')  f.y += step;
+  else if (e.key==='ArrowRight') f.y -= step;
+  else moved = false;
+  if (moved) { const b = fieldXYtoBase(f.x, f.y); node.x=b.x; node.y=b.y; renderAll(); save(); e.preventDefault(); }
+});
+
+//------------------------------ misc helpers --------------------------------------
+function downloadBlob(text, name, type) {
+  const blob = new Blob([text], { type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 1200);
+}
+
+function loadExample() {
+  adoptState(defaultState());
+  state.opModeName = 'auto';
+  state.autos = [{
+    name:'Example_Close', label:'Example Close', start:{ x:-7, y:14, h:90 },
+    steps:[
+      { kind:'action', type:'turret', mode:'AUTO' },
+      { kind:'move', move:'goto', x:-7, y:14, h:90, through:false, factor:1, maxSpeed:1 },
+      { kind:'action', type:'shoot' },
+      { kind:'move', move:'spline', x:12, y:58, h:90, through:true, factor:1, maxSpeed:1 },
+      { kind:'move', move:'spline', x:-7, y:14, h:90, through:false, factor:1, maxSpeed:1 },
+      { kind:'action', type:'shoot' },
+      { kind:'action', type:'turret', mode:'OFF' },
+    ],
+  }];
+  state.activeAuto = 0; state.selected = null; setBackground();
+  renderAll(); save(); toast('Example loaded');
+}
+
+//------------------------------ import an existing OpMode (.java) ------------------
+// Parses a Neuron Path Planner-generated OpMode back into editable autos.
+// Recognises the pose convention
+//   new Pose2D(X, Y*alliance, Math.toRadians(180 - H*alliance))
+// drive.splineToPoint()/drive.goToPoint() become move steps (their paired
+// driveToTarget() call is dropped, it's re-emitted automatically); waitMs()
+// becomes a wait action; anything else (for/if/braces/your own subsystem
+// calls) is preserved verbatim as a "custom line" action so it round-trips
+// without changing behavior.
+// `n*alliance` and `alliance*n` both appear in the codebase, so each alliance-scaled
+// term is matched in either order (two capture groups, whichever fired wins).
+const ALLI = '(?:(-?[\\d.]+)\\s*\\*\\s*alliance|alliance\\s*\\*\\s*(-?[\\d.]+))';
+const POSE_RE = new RegExp(
+  'new\\s+Pose2D\\(\\s*(-?[\\d.]+)\\s*,\\s*' + ALLI +
+  '\\s*,\\s*Math\\.toRadians\\(\\s*180\\s*-\\s*' + ALLI + '\\s*\\)\\s*\\)');
+
+function parsePose(str) {
+  const m = POSE_RE.exec(str || '');
+  if (!m) return null;
+  // groups: 1=x, (2|3)=y, (4|5)=h
+  return { x:+m[1], y:+(m[2] !== undefined ? m[2] : m[3]), h:+(m[4] !== undefined ? m[4] : m[5]) };
+}
+function extractMethodBody(src, name) {
+  const re = new RegExp('public\\s+void\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{');
+  const mm = re.exec(src); if (!mm) return null;
+  let depth = 1, i = mm.index + mm[0].length; const start = i;
+  for (; i < src.length && depth > 0; i++) {
+    const c = src[i]; if (c === '{') depth++; else if (c === '}') depth--;
+  }
+  return src.slice(start, i - 1);
+}
+function parseStatement(line) {
+  let m;
+  // ---- control flow (repeat / if / else / end) ----
+  if ((m = line.match(/^for\s*\(\s*int\s+(\w+)\s*=\s*0\s*;\s*\w+\s*<\s*(\d+)\s*;\s*\w+\s*\+\+\s*\)\s*\{?\s*$/)))
+    return { kind:'repeat', var:m[1], count:+m[2] };
+  if (/^\}\s*else\s*\{?\s*$/.test(line)) return { kind:'else' };
+  if (/^\}\s*;?\s*$/.test(line))         return { kind:'end' };
+  if ((m = line.match(/^if\s*\((.+)\)\s*\{?\s*$/)))   return { kind:'if', cond:m[1].trim() };
+  // ---- moves ----
+  if (/drive\.goToPoint\(/.test(line)) {
+    const p = parsePose(line);
+    const t = line.match(/,\s*(true|false)\s*,\s*([\d.]+)\s*\)\s*;?\s*$/);
+    if (p) return { kind:'move', move:'goto', x:p.x, y:p.y, h:p.h,
+                    through: t ? t[1]==='true' : false, factor:1, maxSpeed: t ? +t[2] : 1 };
+  }
+  if (/drive\.splineToPoint\(/.test(line)) {
+    const p = parsePose(line);
+    const t = line.match(/,\s*(true|false)\s*,\s*(true|false)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)\s*;?\s*$/);
+    if (p) return { kind:'move', move:'spline', x:p.x, y:p.y, h:p.h,
+                    through: t ? t[1]==='true' : false, reversed: t ? t[2]==='true' : undefined,
+                    factor: t ? +t[3] : 1, maxSpeed: t ? +t[4] : 1 };
+  }
+  if ((m = line.match(/^waitMs\(\s*([\d.]+)\s*\)\s*;?$/))) return { kind:'action', type:'sleep', ms:+m[1] };
+  if (/^driveToTarget\(\s*\)\s*;?$/.test(line)) return null; // paired with the move above, not its own step
+  if (/^shoot\(\s*\)\s*;?$/.test(line))    return { kind:'action', type:'shoot' };
+  if (/^farShoot\(\s*\)\s*;?$/.test(line)) return { kind:'action', type:'farShoot' };
+  if ((m = line.match(/^pulseOuttake\(\s*(\d+)\s*\)\s*;?$/))) return { kind:'action', type:'pulseOuttake', ms:+m[1] };
+  if ((m = line.match(/^robot\.intake\.(\w+)\(\s*\)\s*;?$/)))  return { kind:'action', type:'intake', mode:m[1] };
+  if ((m = line.match(/^robot\.gate\.(\w+)\(\s*\)\s*;?$/)))    return { kind:'action', type:'gate', mode:m[1] };
+  if ((m = line.match(/^robot\.shooter\.(\w+)\(\s*\)\s*;?$/))) return { kind:'action', type:'shooter', mode:m[1] };
+  if ((m = line.match(/^robot\.turret\.turretState\s*=\s*Turret\.TurretState\.(\w+)\s*;?$/)))
+    return { kind:'action', type:'turret', mode:m[1] };
+  return { kind:'action', type:'raw', text: line };   // loops, ifs, braces, your own subsystem calls, etc.
+}
+function parseStatements(body) {
+  const steps = [];
+  body.split('\n').forEach(raw => {
+    const line = raw.trim();
+    if (!line || line.startsWith('//')) return;        // drop blank lines + standalone comments
+    const st = parseStatement(line);
+    if (st) steps.push(st);                            // driveToTarget() lines parse to null, skipped
+  });
+  return steps;
+}
+const HELPER_METHODS = new Set(['driveToTarget','waitMs','shoot','farShoot','pulseOuttake','runOpMode']);
+function parseOpMode(src) {
+  // Driver-Station labels
+  let labels = [];
+  const namesM = src.match(/String\[\]\s*autoNames\s*=\s*\{([\s\S]*?)\}/);
+  if (namesM) labels = [...namesM[1].matchAll(/"((?:[^"\\]|\\.)*)"/g)].map(m => m[1]);
+  // run-time switch: case N: Name();  -> ordering + which methods are autos
+  const order = [];
+  const reCase = /case\s+(\d+)\s*:\s*([A-Za-z_]\w*)\s*\(\s*\)\s*;/g;
+  let m; while ((m = reCase.exec(src))) order[+m[1]] = m[2];
+  // init switch: case N: ...setPosition(pose) -> start pose per index
+  const starts = [];
+  const reInit = /case\s+(\d+)\s*:[\s\S]*?setPosition\(\s*(new\s+Pose2D\([^;]*?\))\s*\)\s*;/g;
+  while ((m = reInit.exec(src))) { const p = parsePose(m[2]); if (p) starts[+m[1]] = p; }
+  // method names: prefer the switch order; otherwise every non-helper public void
+  let names = order.filter(Boolean);
+  if (!names.length) {
+    const reM = /public\s+void\s+([A-Za-z_]\w*)\s*\(\s*\)/g;
+    while ((m = reM.exec(src))) if (!HELPER_METHODS.has(m[1])) names.push(m[1]);
+  }
+  const autos = [];
+  names.forEach((nm, idx) => {
+    const body = extractMethodBody(src, nm); if (body == null) return;
+    const steps = parseStatements(body);
+    // start: init-switch pose for this index, else first setPosition inside the body
+    let start = starts[idx];
+    if (!start) {
+      const bm = body.match(/setPosition\(\s*(new\s+Pose2D\([^;]*?\))\s*\)/);
+      if (bm) start = parsePose(bm[1]);
+    }
+    autos.push({ name: nm, label: labels[idx] || nm.replace(/_/g,' '),
+                 start: start || { x:-7, y:14, h:90 }, steps });
+  });
+  return autos;
+}
+function importOpMode(src) {
+  try {
+    const autos = parseOpMode(src);
+    if (!autos.length) { toast('No autos found in that file'); return; }
+    const clsM = src.match(/public\s+class\s+([A-Za-z_]\w*)\s+extends\s+LinearOpMode/);
+    // keep the user's view prefs; only the autos + output target change
+    state.autos = autos;
+    state.activeAuto = 0;
+    state.output = 'opmode';
+    if (clsM) state.opModeName = clsM[1];
+    state.selected = null;
+    renderAll(); save();
+    toast(`Imported and saved ${autos.length} auto${autos.length===1?'':'s'}`);
+  } catch (e) { toast('Could not parse file'); }
+}
+
+//------------------------------ dark mode toggle ------------------------------------
+const themeBtn = document.getElementById('themeToggle');
+function applyTheme(dark) {
+  document.body.classList.toggle('dark', dark);
+  themeBtn.textContent = dark ? '☀ Light' : '🌙 Dark';
+  try { localStorage.setItem('app_theme', dark ? 'dark' : 'light'); } catch(e) {}
+  if (typeof draw === 'function') draw();   // repaint canvas with theme colors
+}
+themeBtn.addEventListener('click', () => applyTheme(!document.body.classList.contains('dark')));
+applyTheme((() => { try { return localStorage.getItem('app_theme') === 'dark'; } catch(e) { return false; } })());
+
+//------------------------------ go --------------------------------------------------
+if (state.youtubeUrl) loadYoutubeOverlay(state.youtubeUrl, false);
+renderAll();
+lastKey = historyKey();
+updateUndoButtons();
+</script>
+</body>
+</html>

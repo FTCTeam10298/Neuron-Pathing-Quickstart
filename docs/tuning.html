@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tuning — Neuron Pathing</title>
+<style>
+  @font-face { font-family:'Robotech GP';
+    src:url('https://brainstormz.us/assets/robotech_gp-webfont-D0hnl6R8.woff2') format('woff2'),
+        url('https://brainstormz.us/assets/robotech_gp-webfont-C3JwReAC.woff') format('woff');
+    font-weight:400; font-style:normal; font-display:swap; }
+  @font-face { font-family:'Montserrat';
+    src:url('https://brainstormz.us/assets/montserrat-regular-webfont-IHWKMDEO.woff') format('truetype');
+    font-display:swap; }
+  :root {
+    --bg:#eef3fb; --panel:#ffffff; --panel2:#eef4ff; --line:#dbe3ef;
+    --text:#172033; --muted:#637083; --accent:#1334f0; --accent2:#f2323f;
+    --ink:#11224c; --page-grad:linear-gradient(180deg,#fff,#f4f7fb 42%,#eef3fb);
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; background:var(--page-grad) var(--bg) fixed; color:var(--text);
+    font-family:'Montserrat',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  h1,h2,h3,h4 { font-family:'Robotech GP','Montserrat',sans-serif; letter-spacing:.4px; color:var(--ink);
+    text-transform:uppercase; font-weight:400; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .wrap { max-width:820px; margin:0 auto; padding:0 24px 80px; }
+  .topbar { display:flex; align-items:center; gap:14px; padding:26px 0 18px; border-bottom:1px solid var(--line);
+    margin-bottom:32px; }
+  .topbar .home { font-size:13px; font-weight:600; color:var(--muted); white-space:nowrap; }
+  .topbar .home:hover { color:var(--accent); }
+  .topbar h1 { font-size:20px; margin:0; }
+  .doc { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:36px 40px; }
+  .doc h1 { font-size:26px; margin-top:0; }
+  .doc h2 { font-size:17px; border-bottom:1px solid var(--line); padding-bottom:8px; margin:36px 0 16px; }
+  .doc h2:first-child { margin-top:0; }
+  .doc h3 { font-size:14px; letter-spacing:.3px; margin:24px 0 8px; }
+  .doc p, .doc li { font-size:14.5px; line-height:1.7; color:var(--text); }
+  .doc ul, .doc ol { padding-left:22px; }
+  .doc li { margin:6px 0; }
+  .doc li p { margin:4px 0; }
+  .doc code { font-family:'SFMono-Regular',Consolas,Menlo,monospace; background:var(--panel2);
+    border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-size:12.5px; color:var(--ink); }
+  .doc pre { background:var(--ink); color:#dce6ff; border-radius:10px; padding:16px 18px; overflow-x:auto;
+    font-size:13px; line-height:1.6; margin:14px 0; }
+  .doc pre code { background:none; border:none; padding:0; color:inherit; }
+  .doc table { border-collapse:collapse; width:100%; margin:16px 0; font-size:13.5px; }
+  .doc th, .doc td { border:1px solid var(--line); padding:8px 12px; text-align:left; vertical-align:top; }
+  .doc th { background:var(--panel2); color:var(--ink); font-family:'Montserrat',sans-serif; }
+  .doc strong { color:var(--ink); }
+  .nextprev { display:flex; justify-content:space-between; margin-top:28px; font-size:13.5px; }
+  footer { text-align:center; color:var(--muted); font-size:12.5px; margin-top:44px; }
+  @media (max-width: 640px) { .doc { padding:24px 22px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="home" href="../index.html">&larr; Neuron Pathing</a>
+    <h1>Tuning</h1>
+  </div>
+  <div class="doc">
+<p>Do these in order. Each stage assumes the previous one is already correct -- PID tuning
+on top of a localizer with the wrong sign conventions will never converge, no matter how
+long you fiddle with gains.</p>
+<p>Before starting: build and deploy once, and confirm your hardware configuration on the
+Driver Hub actually has the motor/Pinpoint names your code expects (Installation).</p>
+<h2 id="stage-1-localizer-sign-conventions">Stage 1 -- Localizer sign conventions</h2>
+<p>Run <strong>Neuron Localizer Test</strong> (<code>NeuronLocalizerTest.java</code>) on the Driver Station. It never
+commands the motors -- you push the robot by hand and just watch the numbers.</p>
+<p>Set <code>xOffsetMm</code>/<code>yOffsetMm</code> in the OpMode to your measured Pinpoint offset first.</p>
+<p>With the robot on the field, facing what you consider "heading 0":</p>
+<table>
+<thead>
+<tr>
+<th>Push the robot...</th>
+<th>...and this should happen</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>straight forward</td>
+<td><code>x</code> increases</td>
+</tr>
+<tr>
+<td>straight left (strafe)</td>
+<td><code>y</code> increases</td>
+</tr>
+<tr>
+<td>turn counter-clockwise (viewed from above)</td>
+<td><code>heading</code> increases</td>
+</tr>
+</tbody>
+</table>
+<p>If any of these are backwards, the fix is in <code>NeuronLocalizer</code>'s construction, <strong>not</strong> in
+<code>NeuronDrive</code>'s math:</p>
+<ul>
+<li><code>x</code> or <code>y</code> backwards -&gt; swap/flip the corresponding <code>EncoderDirection</code> you pass to
+  <code>NeuronLocalizer</code> (or check the pod is plugged into the correct Pinpoint port).</li>
+<li><code>heading</code> backwards -&gt; the Pinpoint's IMU orientation is flipped; double check it's
+  mounted flat and its port assignment matches goBILDA's wiring diagram.</li>
+<li>Numbers are wildly wrong (not just backwards) -&gt; re-check <code>xOffsetMm</code>/<code>yOffsetMm</code> and
+  that you called <code>calibrate(true)</code> after <code>setPosition()</code>.</li>
+</ul>
+<p>Don't move on until pushing the robot in a straight line down the field gives you a clean,
+correctly-signed <code>x</code>/<code>y</code>/<code>heading</code> reading.</p>
+<h2 id="stage-2-track-width">Stage 2 -- Track width</h2>
+<p>Measure the distance between your left and right wheel contact patches, in inches, and
+set it as the <code>trackWidthIn</code> argument to <code>NeuronDrive</code>'s constructor. This isn't something
+you "tune" by feel -- use a tape measure. Getting it wrong makes the spline follower turn
+too sharply or too lazily relative to how fast it thinks it's turning.</p>
+<h2 id="stage-3-point-holding-pid">Stage 3 -- Point-holding PID</h2>
+<p>This is <code>NeuronDrive.goToPoint()</code> -- driving straight to and holding a single point, no
+spline. Use <code>NeuronSplineAuto.java</code>'s <code>goToPoint</code> call (or write your own quick test
+OpMode) to send the robot a few feet away and watch it arrive.</p>
+<p>Tune in this order, one axis at a time if possible (command a pure forward move, then a
+pure strafe, then a pure turn-in-place):</p>
+<ol>
+<li><strong><code>forwardP</code> / <code>strafeP</code> / <code>hP</code></strong> -- raise until the robot approaches its target
+   promptly without a large overshoot. Too low: crawls in slowly or stalls short. Too
+   high: overshoots and/or oscillates visibly around the target.</li>
+<li><strong><code>forwardD</code> / <code>strafeD</code> / <code>hD</code></strong> -- raise to damp any oscillation or overshoot left
+   over from P. Too high: the robot feels "stiff" or twitchy, especially over small
+   corrections.</li>
+<li><strong><code>forwardI</code> / <code>strafeI</code> / <code>hI</code></strong> -- leave at <code>0</code> unless the robot consistently settles
+   just short of the target and stays there (steady-state error). If so, add a <em>small</em>
+   amount of I. Too much causes slow oscillation ("wind-up") -- if you see that, you went
+   too far.</li>
+</ol>
+<p>All six gains, plus the three I-terms, are <code>public static</code> fields on <code>NeuronDrive</code> --
+tune them live with FTC Dashboard, or edit the defaults directly in
+<code>NeuronDrive.java</code> and redeploy.</p>
+<p>Also check <code>pointToleranceIn</code> / <code>headingToleranceDeg</code> (how close counts as "arrived") and
+the tighter <code>closePointToleranceIn</code> / <code>closeHeadingToleranceDeg</code> (final settle). Loosen
+these if the robot is spending too much match time "settling"; tighten them if your
+autos need to be more precise than the defaults (5 in / 5°, then 2 in / 2°).</p>
+<h2 id="stage-4-spline-follower">Stage 4 -- Spline follower</h2>
+<p>Now test <code>drive.splineToPoint()</code> / <code>drive.followSpline()</code> -- actual curved paths, not just
+point-to-point. Plan a path in the <strong><a href="../tools/neuron-path-planner.html">Neuron Path Planner</a></strong>,
+paste the generated code into <code>NeuronSplineAuto.java</code> (or your own OpMode), and run it.</p>
+<p>Three tunables control this, all <code>public static</code> on <code>NeuronDrive</code>:</p>
+<ul>
+<li><strong><code>lookaheadIn</code></strong> (default 14) -- how far ahead along the path the robot aims. Too
+  small: the robot hunts/oscillates trying to track a point that's almost underneath it,
+  especially on tight curves. Too large: it cuts corners, drifting noticeably inside the
+  curve.</li>
+<li><strong><code>centripetalGain</code></strong> (default 0.3) -- corrects for the robot sliding to the outside of
+  a curve. Raise it if the robot visibly drifts wide on curves; lower it if the robot
+  overshoots/wobbles to the <em>inside</em> of curves or feels jerky mid-curve.</li>
+<li><strong><code>splineEndRadiusIn</code></strong> (default 14) -- how close to the path's last point the robot
+  switches from pure-pursuit over to the point-holding PID from Stage 3. If the robot
+  hands off too early it may miss the final heading; too late and it can overshoot before
+  the PID takes over.</li>
+</ul>
+<p>Also double check the per-call <code>factor</code> argument (in <code>splineToPoint</code>/the planner's spline
+steps): it shapes how aggressively the curve pulls toward each waypoint's heading tangent.
+<code>1.0</code> is a reasonable default -- raise it for wider, gentler curves between waypoints that
+are far apart or at sharp angles.</p>
+<h2 id="stage-5-validate">Stage 5 -- Validate</h2>
+<p>Before trusting any of this in a match:</p>
+<ol>
+<li>Re-run <strong>Neuron Localizer Test</strong> and confirm the sign conventions from Stage 1 still
+   hold (a loose pod mount can silently break this after Stage 2-4 changes).</li>
+<li>Run a full autonomous end to end, starting from your actual match starting position,
+   at least 3 times in a row without touching the code -- one clean run proves nothing.</li>
+<li>If something drifts over a long path but Stage 1-4 all checked out individually, it's
+   almost always the Pinpoint offsets (Stage 1) being slightly off, not the follower gains
+   -- small heading errors compound a lot over a long path.</li>
+</ol>
+<p>If you're stuck, see <strong><a href="troubleshooting.md">Troubleshooting</a></strong>.</p>
+  </div>
+  <div class="nextprev">
+<a href="installation.html">&larr; Installation</a>
+<a href="subsystems.html">Subsystems & Public Methods &rarr;</a>
+  </div>
+  <footer>Neuron Pathing &amp; Neuron Path Planner &mdash; FTC Team 10298, Brain Stormz.</footer>
+</div>
+</body>
+</html>

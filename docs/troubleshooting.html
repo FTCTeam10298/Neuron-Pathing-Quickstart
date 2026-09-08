@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Troubleshooting — Neuron Pathing</title>
+<style>
+  @font-face { font-family:'Robotech GP';
+    src:url('https://brainstormz.us/assets/robotech_gp-webfont-D0hnl6R8.woff2') format('woff2'),
+        url('https://brainstormz.us/assets/robotech_gp-webfont-C3JwReAC.woff') format('woff');
+    font-weight:400; font-style:normal; font-display:swap; }
+  @font-face { font-family:'Montserrat';
+    src:url('https://brainstormz.us/assets/montserrat-regular-webfont-IHWKMDEO.woff') format('truetype');
+    font-display:swap; }
+  :root {
+    --bg:#eef3fb; --panel:#ffffff; --panel2:#eef4ff; --line:#dbe3ef;
+    --text:#172033; --muted:#637083; --accent:#1334f0; --accent2:#f2323f;
+    --ink:#11224c; --page-grad:linear-gradient(180deg,#fff,#f4f7fb 42%,#eef3fb);
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; background:var(--page-grad) var(--bg) fixed; color:var(--text);
+    font-family:'Montserrat',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  h1,h2,h3,h4 { font-family:'Robotech GP','Montserrat',sans-serif; letter-spacing:.4px; color:var(--ink);
+    text-transform:uppercase; font-weight:400; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .wrap { max-width:820px; margin:0 auto; padding:0 24px 80px; }
+  .topbar { display:flex; align-items:center; gap:14px; padding:26px 0 18px; border-bottom:1px solid var(--line);
+    margin-bottom:32px; }
+  .topbar .home { font-size:13px; font-weight:600; color:var(--muted); white-space:nowrap; }
+  .topbar .home:hover { color:var(--accent); }
+  .topbar h1 { font-size:20px; margin:0; }
+  .doc { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:36px 40px; }
+  .doc h1 { font-size:26px; margin-top:0; }
+  .doc h2 { font-size:17px; border-bottom:1px solid var(--line); padding-bottom:8px; margin:36px 0 16px; }
+  .doc h2:first-child { margin-top:0; }
+  .doc h3 { font-size:14px; letter-spacing:.3px; margin:24px 0 8px; }
+  .doc p, .doc li { font-size:14.5px; line-height:1.7; color:var(--text); }
+  .doc ul, .doc ol { padding-left:22px; }
+  .doc li { margin:6px 0; }
+  .doc li p { margin:4px 0; }
+  .doc code { font-family:'SFMono-Regular',Consolas,Menlo,monospace; background:var(--panel2);
+    border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-size:12.5px; color:var(--ink); }
+  .doc pre { background:var(--ink); color:#dce6ff; border-radius:10px; padding:16px 18px; overflow-x:auto;
+    font-size:13px; line-height:1.6; margin:14px 0; }
+  .doc pre code { background:none; border:none; padding:0; color:inherit; }
+  .doc table { border-collapse:collapse; width:100%; margin:16px 0; font-size:13.5px; }
+  .doc th, .doc td { border:1px solid var(--line); padding:8px 12px; text-align:left; vertical-align:top; }
+  .doc th { background:var(--panel2); color:var(--ink); font-family:'Montserrat',sans-serif; }
+  .doc strong { color:var(--ink); }
+  .nextprev { display:flex; justify-content:space-between; margin-top:28px; font-size:13.5px; }
+  footer { text-align:center; color:var(--muted); font-size:12.5px; margin-top:44px; }
+  @media (max-width: 640px) { .doc { padding:24px 22px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="home" href="../index.html">&larr; Neuron Pathing</a>
+    <h1>Troubleshooting</h1>
+  </div>
+  <div class="doc">
+<p>Symptoms, in the order you're likely to hit them.</p>
+<h2 id="build-setup">Build / setup</h2>
+<p><strong>Gradle sync fails on a fresh clone.</strong>
+Make sure you're on Android Studio Ladybug (2024.2) or later, and that you opened the
+repo's root folder (the one with <code>settings.gradle</code> in it), not the <code>TeamCode</code> or
+<code>FtcRobotController</code> subfolder directly.</p>
+<p><strong>Can't find <code>GoBildaPinpointDriver</code>.</strong>
+It ships inside the FTC SDK's <code>Hardware</code> module, which <code>build.dependencies.gradle</code>
+already includes -- if this still fails, you likely edited that file or are on a much
+older SDK version. No separate Pinpoint dependency should be needed.</p>
+<h2 id="robot-wont-drive-drives-the-wrong-way">Robot won't drive / drives the wrong way</h2>
+<p><strong>Robot does nothing when a goToPoint/splineToPoint runs.</strong>
+<code>NeuronDrive.update()</code> has to be called every loop for anything to move -- check your
+OpMode has a loop calling <code>drive.update()</code> (see <code>driveToTarget()</code> in the generated/example
+code). A one-shot call to <code>goToPoint()</code> by itself does nothing.</p>
+<p><strong>Robot drives away from the target instead of toward it, or spins the wrong way.</strong>
+This is almost always Stage 1 of tuning (localizer sign conventions), not the drive
+math -- see <a href="tuning.md#stage-1----localizer-sign-conventions">Tuning</a>. Fix the localizer,
+don't try to compensate by negating things in <code>NeuronDrive</code>.</p>
+<p><strong>Robot strafes when it should drive straight, or vice versa.</strong>
+Motor directions/wiring, not software -- confirm all four drive motors are wired and
+configured with the standard mecanum roller orientation, and that <code>frontLeft</code>/<code>backLeft</code>
+are the two reversed motors (the constructor already reverses them, assuming standard
+goBILDA/REV wiring; if yours differs, adjust the direction calls in <code>NeuronDrive</code>'s
+constructor).</p>
+<h2 id="path-following">Path following</h2>
+<p><strong>Robot oscillates / wiggles along a straight spline segment.</strong>
+Lower <code>lookaheadIn</code> slightly first; if that doesn't help, your point-holding PID gains
+(Stage 3) may be too aggressive and bleeding into the spline follower's cross-track
+correction. Re-check Stage 3 before touching spline tunables.</p>
+<p><strong>Robot cuts corners / drifts to the inside of curves.</strong>
+Raise <code>centripetalGain</code>, or increase <code>lookaheadIn</code> slightly.</p>
+<p><strong>Robot overshoots past the end of a path, or the final heading is off.</strong>
+<code>splineEndRadiusIn</code> is handing off to the point-holding PID too late (or too early) --
+see Stage 4. Also confirm the path's final waypoint has the heading you actually want;
+<code>Pose2D</code>'s <code>h</code> is in radians, and a common mistake is passing degrees by accident.</p>
+<p><strong>Everything is fine at slow speed but falls apart at higher <code>maxSpeed</code>.</strong>
+Expected to a degree -- centripetal/cross-track correction needs to work harder at speed.
+Re-tune Stage 3/4 at the actual speed you intend to run in a match, not at a conservative
+test speed.</p>
+<h2 id="path-planner-specific">Path Planner-specific</h2>
+<p><strong>Generated code references <code>robot.something</code> and won't compile.</strong>
+The shooter-pipeline actions (shoot/farShoot/intake/gate/turret) intentionally generate
+calls into <em>your season's</em> <code>Robot</code>/<code>Turret</code>/<code>Gate</code>/<code>Intake</code>/<code>Shooter</code> classes, not the
+pathing library -- they're meant for your real season repo, not a bare Neuron Pathing
+checkout. Either add those classes, or don't use those actions (movement-only autos
+compile fine against just <code>NeuronDrive</code>/<code>NeuronLocalizer</code>).</p>
+<p><strong>Importing an existing OpMode back into the planner finds "No autos found."</strong>
+The importer looks for <code>public class X extends LinearOpMode</code> plus a <code>case N: method();</code>
+switch structure matching what the planner itself generates in "Full OpMode" mode. Autos
+written by hand in a different structure won't parse -- but any unrecognized line is kept
+as a raw custom line if it appears <em>inside</em> a method the importer does recognize.</p>
+<p><strong>The field background/video overlay doesn't line up with real match footage.</strong>
+Use the rotate/flip controls on the field image, and the perspective/scale/offset sliders
+under the video overlay -- these are separate from the path's actual coordinates and only
+affect what you see while planning, not the generated code.</p>
+  </div>
+  <div class="nextprev">
+<a href="subsystems.html">&larr; Subsystems & Public Methods</a>
+<span></span>
+  </div>
+  <footer>Neuron Pathing &amp; Neuron Path Planner &mdash; FTC Team 10298, Brain Stormz.</footer>
+</div>
+</body>
+</html>

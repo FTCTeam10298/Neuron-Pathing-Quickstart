@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Neuron Pathing — Quickstart</title>
+<style>
+  @font-face { font-family:'Robotech GP';
+    src:url('https://brainstormz.us/assets/robotech_gp-webfont-D0hnl6R8.woff2') format('woff2'),
+        url('https://brainstormz.us/assets/robotech_gp-webfont-C3JwReAC.woff') format('woff');
+    font-weight:400; font-style:normal; font-display:swap; }
+  @font-face { font-family:'Montserrat';
+    src:url('https://brainstormz.us/assets/montserrat-regular-webfont-IHWKMDEO.woff') format('truetype');
+    font-display:swap; }
+  :root {
+    --bg:#eef3fb; --panel:#ffffff; --panel2:#eef4ff; --line:#dbe3ef;
+    --text:#172033; --muted:#637083; --accent:#1334f0; --accent2:#f2323f;
+    --ink:#11224c; --page-grad:linear-gradient(180deg,#fff,#f4f7fb 42%,#eef3fb);
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; background:var(--page-grad) var(--bg) fixed; color:var(--text);
+    font-family:'Montserrat',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  h1,h2,h3 { font-family:'Robotech GP','Montserrat',sans-serif; letter-spacing:.4px; color:var(--ink);
+    text-transform:uppercase; font-weight:400; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .wrap { max-width:920px; margin:0 auto; padding:48px 24px 80px; }
+  .hero { text-align:center; padding:24px 0 40px; }
+  .hero .eyebrow { font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--muted);
+    margin-bottom:10px; }
+  .hero h1 { font-size:44px; margin:0 0 12px; }
+  .hero p.tag { font-size:16px; color:var(--muted); max-width:560px; margin:0 auto; line-height:1.6; }
+  .hero .credit { margin-top:10px; font-size:13px; color:var(--muted); }
+
+  .steps { display:flex; gap:16px; margin:36px 0; flex-wrap:wrap; }
+  .step { flex:1; min-width:220px; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:18px 20px; }
+  .step .num { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px;
+    border-radius:50%; background:var(--accent); color:#fff; font-weight:700; font-size:13px;
+    font-family:'Montserrat',sans-serif; margin-bottom:10px; }
+  .step h3 { font-size:15px; margin:0 0 6px; }
+  .step p { font-size:13.5px; color:var(--muted); line-height:1.55; margin:0; }
+
+  .cards { display:grid; grid-template-columns:repeat(2, 1fr); gap:16px; margin:36px 0; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:22px;
+    display:flex; flex-direction:column; gap:8px; transition:border-color .15s, transform .15s; }
+  .card:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .card .icon { font-size:22px; }
+  .card h2 { font-size:16px; margin:2px 0 0; }
+  .card p { font-size:13.5px; color:var(--muted); line-height:1.55; margin:0; flex:1; }
+  .card .go { font-size:13px; font-weight:600; }
+  .card.primary { background:linear-gradient(135deg, var(--accent), #2b52ff); border:none; }
+  .card.primary h2, .card.primary p, .card.primary .go { color:#fff; }
+  .card.primary p { opacity:.9; }
+
+  .section { margin:44px 0; }
+  .section h2 { font-size:18px; border-bottom:1px solid var(--line); padding-bottom:10px; margin-bottom:16px; }
+  pre { background:var(--ink); color:#dce6ff; border-radius:10px; padding:16px 18px; overflow-x:auto;
+    font-size:13px; line-height:1.6; }
+  code { font-family:'SFMono-Regular',Consolas,Menlo,monospace; }
+  .filetree { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 20px;
+    font-size:13px; line-height:1.7; }
+  .filetree .f { color:var(--muted); }
+  .filetree .hi { color:var(--accent); font-weight:600; }
+
+  footer { text-align:center; color:var(--muted); font-size:12.5px; margin-top:60px; }
+
+  @media (max-width: 640px) {
+    .cards { grid-template-columns:1fr; }
+    .hero h1 { font-size:32px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">FTC Team 10298 · Brain Stormz</div>
+    <h1>Neuron Pathing</h1>
+    <p class="tag">A custom autonomous path-following library for FTC, plus a browser-based
+      visual tool for drawing a path on the field and generating the Java to drive it.</p>
+    <p class="credit">This quickstart is built on the official
+      <a href="https://github.com/FIRST-Tech-Challenge/FtcRobotController">FIRST-Tech-Challenge/FtcRobotController</a> SDK.</p>
+  </div>
+
+  <div class="cards">
+    <a class="card primary" href="tools/neuron-path-planner.html">
+      <div class="icon">🧭</div>
+      <h2>Open the Neuron Path Planner</h2>
+      <p>Draw a path on the field, tune it visually, and copy the generated Java straight
+        into an OpMode. Start here — no setup required, it just runs in your browser.</p>
+      <span class="go">Launch the planner →</span>
+    </a>
+    <a class="card" href="docs/installation.html">
+      <div class="icon">🛠️</div>
+      <h2>Installation</h2>
+      <p>Clone the repo, wire up your Pinpoint and drive motors, and construct the library
+        in your OpMode.</p>
+      <span class="go">Read the guide →</span>
+    </a>
+    <a class="card" href="docs/tuning.html">
+      <div class="icon">🎛️</div>
+      <h2>Tuning</h2>
+      <p>A step-by-step order of operations: localizer sign conventions, PID gains, then
+        the spline follower. Don't skip ahead.</p>
+      <span class="go">Read the guide →</span>
+    </a>
+    <a class="card" href="docs/subsystems.html">
+      <div class="icon">🧩</div>
+      <h2>Subsystems &amp; Public Methods</h2>
+      <p>Add your own mechanisms (intake, arm, shooter...) alongside NeuronDrive, and call
+        them from both TeleOp and Autonomous.</p>
+      <span class="go">Read the guide →</span>
+    </a>
+    <a class="card" href="docs/troubleshooting.html">
+      <div class="icon">🧯</div>
+      <h2>Troubleshooting</h2>
+      <p>Robot driving the wrong way, oscillating, cutting corners? Look here before you
+        start changing gains at random.</p>
+      <span class="go">Read the guide →</span>
+    </a>
+  </div>
+
+  <div class="section">
+    <h2>Get started in 3 steps</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="num">1</div>
+        <h3>Clone &amp; open</h3>
+        <p>Clone this repo and open the root folder in Android Studio. Build once to
+          confirm everything syncs cleanly.</p>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <h3>Configure &amp; tune</h3>
+        <p>Set your Pinpoint offsets and track width, then work through
+          <a href="docs/tuning.html">Tuning</a> in order — localizer first, PID second,
+          spline follower last.</p>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <h3>Plan a path</h3>
+        <p>Open the <a href="tools/neuron-path-planner.html">Neuron Path Planner</a>, draw
+          your auto, and paste the generated code into an OpMode like
+          <code>NeuronSplineAuto.java</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>What's in this repo</h2>
+    <div class="filetree">
+      <div><span class="hi">TeamCode/.../neuronpathing/</span> <span class="f">— the library itself: Pose2D, Spline, NeuronLocalizer, NeuronDrive</span></div>
+      <div><span class="hi">TeamCode/.../opmodes/</span> <span class="f">— NeuronTeleOp, NeuronSplineAuto, NeuronLocalizerTest example OpModes</span></div>
+      <div><span class="hi">tools/neuron-path-planner.html</span> <span class="f">— the visual path planner (open directly in a browser)</span></div>
+      <div><span class="hi">docs/</span> <span class="f">— installation, tuning, troubleshooting</span></div>
+      <div><span class="hi">FtcRobotController/</span> <span class="f">— unmodified official FTC SDK</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>The shape of the code</h2>
+    <p style="color:var(--muted); font-size:14px; line-height:1.6; margin-top:-6px;">
+      This is what the planner generates, and what every example OpMode follows:
+    </p>
+    <pre><code>NeuronLocalizer localizer = new NeuronLocalizer(hardwareMap, telemetry, xOffsetMm, yOffsetMm);
+NeuronDrive drive = new NeuronDrive(hardwareMap, localizer, trackWidthIn);
+localizer.setPosition(new Pose2D(0, 0, 0));
+localizer.calibrate(true);
+
+waitForStart();
+
+drive.splineToPoint(new Pose2D(24, 24, Math.toRadians(90)), false, false, 1, 0.8);
+while (opModeIsActive() &amp;&amp; drive.isBusy()) {
+    drive.update();   // NeuronDrive only moves while this is being called
+}</code></pre>
+  </div>
+
+  <footer>
+    Neuron Pathing &amp; Neuron Path Planner — FTC Team 10298, Brain Stormz.
+  </footer>
+
+</div>
+</body>
+</html>

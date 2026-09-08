@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Subsystems & Public Methods — Neuron Pathing</title>
+<style>
+  @font-face { font-family:'Robotech GP';
+    src:url('https://brainstormz.us/assets/robotech_gp-webfont-D0hnl6R8.woff2') format('woff2'),
+        url('https://brainstormz.us/assets/robotech_gp-webfont-C3JwReAC.woff') format('woff');
+    font-weight:400; font-style:normal; font-display:swap; }
+  @font-face { font-family:'Montserrat';
+    src:url('https://brainstormz.us/assets/montserrat-regular-webfont-IHWKMDEO.woff') format('truetype');
+    font-display:swap; }
+  :root {
+    --bg:#eef3fb; --panel:#ffffff; --panel2:#eef4ff; --line:#dbe3ef;
+    --text:#172033; --muted:#637083; --accent:#1334f0; --accent2:#f2323f;
+    --ink:#11224c; --page-grad:linear-gradient(180deg,#fff,#f4f7fb 42%,#eef3fb);
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; background:var(--page-grad) var(--bg) fixed; color:var(--text);
+    font-family:'Montserrat',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  h1,h2,h3,h4 { font-family:'Robotech GP','Montserrat',sans-serif; letter-spacing:.4px; color:var(--ink);
+    text-transform:uppercase; font-weight:400; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .wrap { max-width:820px; margin:0 auto; padding:0 24px 80px; }
+  .topbar { display:flex; align-items:center; gap:14px; padding:26px 0 18px; border-bottom:1px solid var(--line);
+    margin-bottom:32px; }
+  .topbar .home { font-size:13px; font-weight:600; color:var(--muted); white-space:nowrap; }
+  .topbar .home:hover { color:var(--accent); }
+  .topbar h1 { font-size:20px; margin:0; }
+  .doc { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:36px 40px; }
+  .doc h1 { font-size:26px; margin-top:0; }
+  .doc h2 { font-size:17px; border-bottom:1px solid var(--line); padding-bottom:8px; margin:36px 0 16px; }
+  .doc h2:first-child { margin-top:0; }
+  .doc h3 { font-size:14px; letter-spacing:.3px; margin:24px 0 8px; }
+  .doc p, .doc li { font-size:14.5px; line-height:1.7; color:var(--text); }
+  .doc ul, .doc ol { padding-left:22px; }
+  .doc li { margin:6px 0; }
+  .doc li p { margin:4px 0; }
+  .doc code { font-family:'SFMono-Regular',Consolas,Menlo,monospace; background:var(--panel2);
+    border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-size:12.5px; color:var(--ink); }
+  .doc pre { background:var(--ink); color:#dce6ff; border-radius:10px; padding:16px 18px; overflow-x:auto;
+    font-size:13px; line-height:1.6; margin:14px 0; }
+  .doc pre code { background:none; border:none; padding:0; color:inherit; }
+  .doc table { border-collapse:collapse; width:100%; margin:16px 0; font-size:13.5px; }
+  .doc th, .doc td { border:1px solid var(--line); padding:8px 12px; text-align:left; vertical-align:top; }
+  .doc th { background:var(--panel2); color:var(--ink); font-family:'Montserrat',sans-serif; }
+  .doc strong { color:var(--ink); }
+  .nextprev { display:flex; justify-content:space-between; margin-top:28px; font-size:13.5px; }
+  footer { text-align:center; color:var(--muted); font-size:12.5px; margin-top:44px; }
+  @media (max-width: 640px) { .doc { padding:24px 22px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="home" href="../index.html">&larr; Neuron Pathing</a>
+    <h1>Subsystems & Public Methods</h1>
+  </div>
+  <div class="doc">
+<p>Neuron Pathing only knows about driving and following paths. Everything else on your
+robot -- an intake, a shooter, an arm, a claw -- is a <strong>subsystem</strong>: a small class that
+owns one mechanism's hardware, and a handful of methods you call from your OpModes. This
+page is the pattern for writing those, and for calling their public methods directly from
+both TeleOp and Autonomous alongside <code>NeuronDrive</code>.</p>
+<p>This repo doesn't use a command-scheduler framework (like FTCLib's <code>CommandScheduler</code>) --
+you just call a subsystem's public methods directly, in whatever order your OpMode needs.
+That's simpler to reason about for a first robot, and it's exactly the pattern
+<code>NeuronDrive</code> itself already follows. If your robot grows complex enough that manual
+sequencing gets unwieldy, a command-scheduler library is a reasonable next step, but
+start here.</p>
+<h2 id="writing-a-subsystem">Writing a subsystem</h2>
+<p>See <code>TeamCode/.../subsystems/ExampleClaw.java</code> for a working copy of this shape:</p>
+<pre><code class="language-java">public class ExampleClaw {
+    public enum State { OPEN, CLOSED }
+
+    private final Servo servo;
+    public State state = State.CLOSED;
+
+    public ExampleClaw(HardwareMap hwMap, String servoName) {
+        servo = hwMap.get(Servo.class, servoName);
+        close();
+    }
+
+    public void open()  { servo.setPosition(OPEN_POS);  state = State.OPEN; }
+    public void close() { servo.setPosition(CLOSED_POS); state = State.CLOSED; }
+    public void toggle() { if (state == State.OPEN) close(); else open(); }
+
+    public void update() { /* PID, timed sequence, telemetry -- see below */ }
+}
+</code></pre>
+<p>The rules that make this pattern work:</p>
+<ul>
+<li><strong>The subsystem owns its hardware.</strong> Only <code>ExampleClaw</code> ever calls
+  <code>hardwareMap.get(Servo.class, ...)</code> for that servo. Nothing else reaches in and touches
+  it directly -- if you need a new capability, add a method, don't bypass the class.</li>
+<li><strong>Public methods are what your OpModes call.</strong> Name them as verbs (<code>open()</code>, <code>shoot()</code>,
+  <code>setPosition(...)</code>). Keep them non-blocking where possible (set a target/state and
+  return immediately) so they don't stall your main loop.</li>
+<li><strong><code>update()</code> is for anything that has to happen every loop cycle</strong>, even when nothing
+  just changed -- running a PID toward a target position, advancing a timed sequence,
+  reporting telemetry. A one-servo claw doesn't need real work here, but a motor-driven
+  arm holding position against gravity does. Call every subsystem's <code>update()</code> once per
+  loop, right alongside <code>drive.update()</code>.</li>
+</ul>
+<h2 id="using-subsystems-in-teleop">Using subsystems in TeleOp</h2>
+<p>Construct every subsystem once, before <code>waitForStart()</code>, next to <code>drive</code>/<code>localizer</code>.
+Then in the loop: read gamepad buttons, call the matching subsystem method, and call
+<code>update()</code> on everything. See <code>NeuronTeleOp.java</code>:</p>
+<pre><code class="language-java">NeuronDrive drive = new NeuronDrive(hardwareMap, localizer, trackWidthIn);
+ExampleClaw claw = new ExampleClaw(hardwareMap);
+
+waitForStart();
+while (opModeIsActive()) {
+    drive.drive(gamepad1);
+    drive.update();
+
+    if (gamepad1.aWasPressed()) claw.toggle();   // edge-detected: fires once per press
+    claw.update();
+
+    telemetry.addData(&quot;claw&quot;, claw.state);
+    telemetry.update();
+}
+</code></pre>
+<p>Use <code>*WasPressed()</code> (e.g. <code>gamepad1.aWasPressed()</code>) for anything that should fire once per
+button press, not once per loop iteration for the whole time it's held down.</p>
+<h2 id="using-subsystems-in-autonomous">Using subsystems in Autonomous</h2>
+<p>Subsystem calls just sit in the same sequence as your drive calls, in whatever order the
+auto needs. The only wrinkle: a move like <code>drive.splineToPoint(...)</code> doesn't block, so
+follow it with <code>driveToTarget()</code> (or call <code>claw.update()</code> inside your own wait loop) so
+subsystems that need per-loop updates keep running while the robot drives. See
+<code>NeuronSplineAuto.java</code>:</p>
+<pre><code class="language-java">drive.splineToPoint(new Pose2D(24, 24, Math.toRadians(90)), false, false, 1, 0.8);
+driveToTarget();          // blocks until the move finishes, still calling claw.update()
+
+claw.open();
+waitMs(300);              // a dwell, also still calling claw.update()
+
+drive.goToPoint(new Pose2D(24, 0, 0), false, 0.6);
+driveToTarget();
+
+claw.close();
+</code></pre>
+<p><code>driveToTarget()</code> and <code>waitMs()</code> are small private helper methods defined at the bottom of
+the OpMode (loop calling <code>drive.update()</code>/<code>claw.update()</code> until the move finishes or the
+timer's up) -- this is exactly what the Neuron Path Planner's "Full OpMode" output
+generates for you automatically. If you're pasting planner output into your own OpMode,
+copy these two helpers over once and every generated auto will compile against them.</p>
+<h2 id="wiring-your-subsystem-into-the-planner">Wiring your subsystem into the planner</h2>
+<p>The planner's shooter-pipeline actions (shoot/intake/gate/turret) are just this pattern,
+generated as text. To add your own subsystem as a quick-add action in the planner, open
+<code>tools/neuron-path-planner.html</code> and add an entry to <code>const ACTIONS</code> near the top of the
+<code>&lt;script&gt;</code> block, following the same shape as the existing entries -- see the comment
+directly above it for the exact format.</p>
+  </div>
+  <div class="nextprev">
+<a href="tuning.html">&larr; Tuning</a>
+<a href="troubleshooting.html">Troubleshooting &rarr;</a>
+  </div>
+  <footer>Neuron Pathing &amp; Neuron Path Planner &mdash; FTC Team 10298, Brain Stormz.</footer>
+</div>
+</body>
+</html>
