@@ -150,7 +150,7 @@ public class NeuronDrive {
                 } else if (atPoint()) {
                     driveState = DriveState.HOLD_POS;
                 }
-                break;
+                break;  
             case HOLD_POS:
                 pidToPoint();
                 break;
