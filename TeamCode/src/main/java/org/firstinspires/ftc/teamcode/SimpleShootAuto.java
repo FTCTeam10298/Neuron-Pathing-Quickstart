@@ -24,8 +24,8 @@ public class SimpleShootAuto extends LinearOpMode {
     private CRServo rightIntakeServo;
     private CRServo windmillServo;
 
-    private static final double LAUNCHER_TARGET_VELOCITY = 1230;
-    private static final double LAUNCHER_MIN_VELOCITY = 1180;
+    private static final double LAUNCHER_TARGET_VELOCITY = 1250;
+    private static final double LAUNCHER_MIN_VELOCITY = 1200;
 
 
     @Override
@@ -128,8 +128,8 @@ public class SimpleShootAuto extends LinearOpMode {
 
         if (opModeIsActive()) {
             driveBackward(10.0, 35);
-            turnLeft(10.0, 100);
-            driveBackward(10.0, 3000);
+            turnLeft(0.5, 180);
+            driveBackward(.3, 10000);
 
         }
 
