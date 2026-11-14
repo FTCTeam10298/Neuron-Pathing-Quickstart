@@ -1,0 +1,173 @@
+package org.firstinspires.ftc.teamcode.opmodes;
+
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.util.ElapsedTime;
+
+import org.firstinspires.ftc.teamcode.neuronpathing.NeuronDrive;
+import org.firstinspires.ftc.teamcode.neuronpathing.NeuronLocalizer;
+import org.firstinspires.ftc.teamcode.neuronpathing.Pose2D;
+
+/**
+ * Example autonomous showing the exact shape of code the Neuron Path Planner
+ * (tools/neuron-path-planner.html) generates: set a starting pose, then chain
+ * splineToPoint()/goToPoint() calls, each followed by driveToTarget(). Plan a
+ * path visually in the tool, copy the generated block, and drop it in where
+ * the TODO is below.
+ *
+ * Also shows how a subsystem's public methods drop into that same sequence: claw
+ * calls sit right next to the drive calls, in whatever order the auto needs.
+ * See docs/subsystems.md for the full pattern.
+ */
+@Autonomous(name = "Neuron Spline Auto (Example)")
+public class RegularNeuronSplineAuto extends LinearOpMode {
+    NeuronLocalizer localizer;
+    NeuronDrive drive;
+    private static final double LAUNCHER_TARGET_VELOCITY = 1250;
+    private static final double LAUNCHER_MIN_VELOCITY = 1200;
+    private DcMotorEx launcher;
+    private DcMotor intake;
+
+    private CRServo leftIntakeServo;
+    private CRServo rightIntakeServo;
+    private CRServo windmillServo;
+
+    @Override
+    public void runOpMode() throws InterruptedException {
+
+        intake = hardwareMap.get(DcMotor.class, "intake");
+        launcher = hardwareMap.get(DcMotorEx.class, "launcher");
+
+        windmillServo = hardwareMap.get(CRServo.class, "windmillServo");
+        leftIntakeServo = hardwareMap.get(CRServo.class, "left_intake_servo");
+        rightIntakeServo = hardwareMap.get(CRServo.class, "right_intake_servo");
+
+        rightIntakeServo.setDirection(DcMotorSimple.Direction.REVERSE);
+        windmillServo.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        localizer = new NeuronLocalizer(hardwareMap, telemetry, /*xOffsetMm=*/0, /*yOffsetMm=*/0);
+        drive = new NeuronDrive(hardwareMap, localizer, /*trackWidthIn=*/14);
+
+        // Set this to wherever your robot actually starts on the field.
+        localizer.calibrate(true);
+
+        localizer.setPosition(new Pose2D(136, 60, Math.toRadians(0)));
+
+        waitForStart();
+        if (isStopRequested()) return;
+
+
+        shoot();
+        waitMs(500);
+        drive.splineToPoint(new Pose2D(118, 8.5, Math.toRadians(0)), false, true, 1, 1);
+        driveToTarget();
+        waitMs(100);
+        intake.setPower(1.0);
+        leftIntakeServo.setPower(.7);
+        rightIntakeServo.setPower(.7);
+
+        drive.goToPoint(new Pose2D(135.5, 9, Math.toRadians(0)), false, 1);
+        driveToTarget();
+        drive.goToPoint(new Pose2D(127, 9, Math.toRadians(0)), false, 1);
+        driveToTarget();
+        drive.goToPoint(new Pose2D(135.5, 9, Math.toRadians(0)), false, 1);
+        driveToTarget();
+        drive.goToPoint(new Pose2D(127, 9, Math.toRadians(0)), false, 1);
+        driveToTarget();
+        drive.goToPoint(new Pose2D(135.5, 9, Math.toRadians(0)), false, 1);
+        driveToTarget();
+
+        waitMs(300);
+        intake.setPower(0);
+        leftIntakeServo.setPower(0);
+        rightIntakeServo.setPower(0);
+        drive.splineToPoint(new Pose2D(109.5, 61, Math.toRadians(0)), false, true, 1, 1);
+        driveToTarget();
+        drive.goToPoint(new Pose2D(23.5, 61, Math.toRadians(0)), false, 1);
+        driveToTarget();
+        drive.goToPoint(new Pose2D(12, 61, Math.toRadians(180)), false, 1);
+        driveToTarget();
+        waitMs(600);
+        shoot();
+        drive.goToPoint(new Pose2D(25, 12, Math.toRadians(180)), false, 1);
+        driveToTarget();
+    }
+
+    // Blocks until the active goToPoint()/splineToPoint() move finishes. NeuronDrive
+    // only moves while update() is being called, so every move needs one of these.
+    private void driveToTarget() {
+        while (opModeIsActive() && drive.isBusy()) {
+            drive.update();
+//            claw.update();
+            telemetry.addData("state", drive.driveState);
+            telemetry.addData("x", drive.pose.x);
+            telemetry.addData("y", drive.pose.y);
+            telemetry.update();
+        }
+    }
+
+    // Pauses for ms milliseconds while still actively holding position and
+    // updating subsystems (so a claw mid-motion, etc. keeps running).
+    private void waitMs(double ms) {
+        double start = System.currentTimeMillis();
+        while (opModeIsActive() && System.currentTimeMillis() - start < ms) {
+            drive.update();
+            idle();
+        }
+    }
+    private void shoot() {
+        //  SPIN UP LAUNCHER
+
+        launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
+
+        ElapsedTime spinUpTimer = new ElapsedTime();
+
+        while (opModeIsActive()
+                && launcher.getVelocity() < LAUNCHER_MIN_VELOCITY
+                && spinUpTimer.seconds() < 5.0) {
+
+            telemetry.addData("Launcher Velocity", launcher.getVelocity());
+            telemetry.addLine("Spinning up launcher...");
+            telemetry.update();
+
+            idle();
+        }
+
+
+        if (opModeIsActive() && launcher.getVelocity() >= LAUNCHER_MIN_VELOCITY) {
+
+            telemetry.addLine("Launcher ready!");
+            telemetry.update();
+
+            intake.setPower(1.0);
+            leftIntakeServo.setPower(1.0);
+            rightIntakeServo.setPower(1.0);
+            windmillServo.setPower(0.5);
+
+            sleep(4000);
+
+
+            intake.setPower(0);
+            leftIntakeServo.setPower(0);
+            rightIntakeServo.setPower(0);
+            windmillServo.setPower(0);
+
+        }
+        else {
+
+            telemetry.addLine("Launcher failed to reach speed.");
+            telemetry.update();
+        }
+
+
+
+
+        launcher.setVelocity(0);
+
+        sleep(300);
+    }
+}
