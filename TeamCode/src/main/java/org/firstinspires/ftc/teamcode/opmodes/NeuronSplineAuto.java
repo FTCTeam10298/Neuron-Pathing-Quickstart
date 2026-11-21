@@ -33,8 +33,9 @@ public class NeuronSplineAuto extends LinearOpMode {
         claw.close();
 
         // Set this to wherever your robot actually starts on the field.
-        localizer.setPosition(new Pose2D(0, 0, 0));
         localizer.calibrate(true);
+
+        localizer.setPosition(new Pose2D(0, 0, 0));
 
         waitForStart();
         if (isStopRequested()) return;
